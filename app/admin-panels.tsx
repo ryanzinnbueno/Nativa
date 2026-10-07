@@ -9,7 +9,11 @@ import {
 } from "lucide-react";
 import { products as examples, money, statuses } from "./catalog";
 import { Banner, defaultBanners } from "./banner-data";
+import { type Category } from "./category-data";
+import { ImageUpload } from "./image-upload";
+import { sellingPrice } from "../lib/pricing";
 type Product = (typeof examples)[number] & {
+  sale_price?: number | null;
   active: boolean;
   position: number;
 };
@@ -18,13 +22,12 @@ type Settings = {
   banner_seconds: number;
   banner_autoplay: boolean;
 };
-type Catalog = { products: Product[]; banners: Banner[]; settings: Settings };
-const options = [
-  "Castanhas",
-  "Grãos e cereais",
-  "Chás e ervas",
-  "Frutas secas",
-];
+type Catalog = {
+  products: Product[];
+  banners: Banner[];
+  settings: Settings;
+  categories: Category[];
+};
 async function request<T>(
   url: string,
   method = "GET",
@@ -52,6 +55,7 @@ export function CatalogPanel({
     [saved, setSaved] = useState("");
   const [item, setItem] = useState<Product | Banner | null>(null),
     [isNew, setIsNew] = useState(false);
+  const [uploadBusy, setUploadBusy] = useState(false);
   const load = async () => {
     setError("");
     try {
@@ -90,6 +94,8 @@ export function CatalogPanel({
             subtitle: "",
             weight: "",
             price: 0,
+            sale_price: null,
+            category: data?.categories[0]?.name || "",
             tag: "",
             description: "",
             ingredients: "",
@@ -99,6 +105,7 @@ export function CatalogPanel({
         : {
             ...defaultBanners[0],
             id: crypto.randomUUID(),
+            category: data?.categories[0]?.name || "",
             heading: "",
             heading_accent: "",
             title: "",
@@ -111,7 +118,7 @@ export function CatalogPanel({
     );
   const submit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!item) return;
+    if (!item || uploadBusy) return;
     setBusy(true);
     setError("");
     setSaved("");
@@ -157,7 +164,11 @@ export function CatalogPanel({
             ? "Cadastre, edite e escolha o que aparece na loja."
             : "Edite as imagens e mensagens da página inicial."}
         </p>
-        <button className="primary" onClick={fresh} disabled={!data || busy}>
+        <button
+          className="primary"
+          onClick={fresh}
+          disabled={!data || busy || uploadBusy}
+        >
           <Plus size={18} />
           {kind === "product" ? "Novo produto" : "Novo banner"}
         </button>
@@ -185,7 +196,7 @@ export function CatalogPanel({
               type="button"
               className="text-button"
               onClick={() => setItem(null)}
-              disabled={busy}
+              disabled={busy || uploadBusy}
             >
               Cancelar
             </button>
@@ -193,6 +204,16 @@ export function CatalogPanel({
           <div className="editor-grid">
             <div className="editor-photo">
               <img src={item.image} alt="Prévia da imagem" />
+              <ImageUpload
+                key={item.id}
+                kind={kind}
+                onBusy={setUploadBusy}
+                onUploaded={(url) =>
+                  setItem((current) =>
+                    current ? { ...current, image: url } : current,
+                  )
+                }
+              />
               <label>
                 Escolher uma imagem da loja
                 <select
@@ -243,6 +264,35 @@ export function CatalogPanel({
                       />
                     </label>
                   </div>
+                  <label>
+                    Preço promocional (R$){" "}
+                    <span className="quiet">opcional</span>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      pattern="[0-9]+([.,][0-9]{1,2})?"
+                      aria-label="Preço promocional em reais"
+                      placeholder="Deixe vazio para não ter promoção"
+                      defaultValue={
+                        "sale_price" in item && item.sale_price != null
+                          ? (item.sale_price / 100).toFixed(2).replace(".", ",")
+                          : ""
+                      }
+                      onChange={(e) => {
+                        const value = e.target.value.trim();
+                        const n = Number(value.replace(",", "."));
+                        if (!value || Number.isFinite(n))
+                          setItem({
+                            ...item,
+                            sale_price: value ? Math.round(n * 100) : null,
+                          } as Product);
+                      }}
+                    />
+                    <small>
+                      Deve ser menor que o preço original. Aparece na loja e é
+                      usado no pedido.
+                    </small>
+                  </label>
                   {field("tag", "Destaque curto", false, 60)}
                   {field("ingredients", "Ingredientes e cuidados", false, 2000)}
                 </>
@@ -268,25 +318,23 @@ export function CatalogPanel({
                 {kind === "product"
                   ? "Categoria"
                   : "Categoria que o botão abre"}
-                <input
-                  list="nativa-categories"
+                <select
                   required
-                  maxLength={60}
                   value={item.category}
                   onChange={(e) =>
                     setItem({ ...item, category: e.target.value })
                   }
-                />
-                <datalist id="nativa-categories">
-                  {Array.from(
-                    new Set([
-                      ...options,
-                      ...(data?.products.map((p) => p.category) || []),
-                    ]),
-                  ).map((c) => (
-                    <option key={c} value={c} />
+                >
+                  <option value="" disabled>
+                    Escolha a categoria
+                  </option>
+                  {data?.categories.map((c) => (
+                    <option key={c.id} value={c.name}>
+                      {c.name}
+                    </option>
                   ))}
-                </datalist>
+                </select>
+                <small>Crie novas opções na aba Categorias.</small>
               </label>
               <label>
                 Descrição
@@ -323,7 +371,7 @@ export function CatalogPanel({
                   Mostrar na loja
                 </label>
               </div>
-              <button className="primary" disabled={busy}>
+              <button className="primary" disabled={busy || uploadBusy}>
                 {busy ? "Salvando…" : "Salvar alterações"}
               </button>
             </div>
@@ -349,7 +397,7 @@ export function CatalogPanel({
                 </h3>
                 <p>
                   {p.category}
-                  {"price" in p ? " · " + money(p.price) : ""}
+                  {"price" in p ? " · " + money(sellingPrice(p)) : ""}
                 </p>
                 <small>Ordem {p.position} · Editar</small>
               </div>

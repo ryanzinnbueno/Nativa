@@ -37,11 +37,11 @@ export async function GET(request: Request) {
       });
     }
     const client = await createClient();
-    const [catalog, settings, banners] = await Promise.all([
+    const [catalog, settings, banners, categories] = await Promise.all([
       client
         .from("nativa_products")
         .select(
-          "id,name,subtitle,category,weight,price,tag,image,description,ingredients",
+          "id,name,subtitle,category,weight,price,sale_price,tag,image,description,ingredients",
         )
         .eq("active", true)
         .order("position"),
@@ -56,12 +56,18 @@ export async function GET(request: Request) {
         .eq("active", true)
         .order("position")
         .order("id"),
+      client
+        .from("nativa_categories")
+        .select("id,name,position")
+        .order("position")
+        .order("name"),
     ]);
-    if (catalog.error || settings.error || banners.error)
+    if (catalog.error || settings.error || banners.error || categories.error)
       throw new Error("Database read failed");
     return reply({
       products: catalog.data,
       banners: banners.data,
+      categories: categories.data,
       ...settings.data,
     });
   } catch {

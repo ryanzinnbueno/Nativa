@@ -25,12 +25,18 @@ O projeto Nativa ztgmikmwpkhozrrfmuju já recebeu as tabelas e o catálogo desta
 1. supabase/migrations/202610070001_nativa.sql
 2. supabase/seed.sql
 3. supabase/migrations/202610070002_catalog_banners.sql
+4. supabase/migrations/202610070003_categories_offers.sql
+5. supabase/migrations/202610070004_image_storage.sql
 
-**Atualização de uma instalação existente:** execute apenas `202610070002_catalog_banners.sql`, uma vez. Ela cria a tabela de banners com as três mensagens atuais, permite cadastro de produtos somente para administradores autorizados e adiciona tempo/passagem automática dos banners. Não altera clientes nem pedidos.
+**Atualização da instalação Nativa existente:** aplique as migrações 003 e 004 uma vez, antes de publicar esta versão. A 003 preserva as categorias existentes, permite renomeá-las junto com os produtos e banners e adiciona preços promocionais. A 004 cria o armazenamento público nativa-images para fotos da loja, com envio somente por administradores autorizados. Não altera pedidos antigos.
 
 As tabelas nativa_* têm RLS habilitado. Visitantes leem apenas catálogo, banners visíveis e contato comercial. A função nativa_place_order valida o pedido, busca preços no banco e grava cliente e pedido em uma transação. Evita pedidos duplicados em tentativas repetidas e limita a seis pedidos por telefone a cada 15 minutos. Pedidos e clientes só podem ser lidos por administradores autorizados.
 
-Em **Área da Nativa → Produtos**, cadastre ou edite nome, categoria, preço em reais, peso, foto, descrição, ingredientes, ordem e visibilidade. Ocultar preserva o item e os pedidos anteriores. Imagens podem ser escolhidas entre as fotos da loja ou por endereço HTTPS; esta versão não envia arquivos de imagem.
+Em **Área da Nativa → Produtos**, cadastre ou edite nome, categoria, preço em reais, peso, foto, descrição, ingredientes, ordem e visibilidade. Ocultar preserva o item e os pedidos anteriores. Escolha uma categoria cadastrada, informe o preço normal e, opcionalmente, um preço promocional menor. Deixe a promoção vazia para encerrá-la. O desconto aparece na loja e é usado no carrinho e no pedido. Os pedidos anteriores mantêm os valores registrados.
+
+Em **Categorias**, crie e renomeie categorias e escolha sua ordem. Elas aparecem na seleção de produtos e banners e nos filtros da loja. Renomear atualiza os produtos e banners associados.
+
+Em produtos e banners, envie fotos JPG, PNG ou WebP de até 4 MB, escolha uma foto já disponível ou informe um endereço HTTPS. As fotos enviadas são convertidas para WebP, reduzidas para até 1920 pixels e publicadas no armazenamento da loja; não envie documentos ou fotos privadas. O produto ou banner só muda ao salvar. Cancelar após o envio deixa a foto armazenada, sem modificar o cadastro.
 
 Em **Banners**, edite mensagens, imagem, categoria do botão, ordem e visibilidade. Controle também o tempo entre banners (3–20 segundos) e a passagem automática. As preferências de movimento do visitante são respeitadas.
 
@@ -79,7 +85,7 @@ npm run build
 
 Os testes usam PostgreSQL em memória (PGlite) e não gravam no Supabase. Cobrem acesso restrito, cálculo de preços, tentativas duplicadas, validação, cadastro administrativo, banners visíveis/ocultos, limite de pedidos, origem das requisições e paginação/totais do PDF.
 
-O site está conectado ao GitHub e publicado na Netlify. A administração exige uma conta Supabase autorizada em nativa_admins. As funções de produtos e banners dependem da segunda migração acima.
+O site está conectado ao GitHub e publicado na Netlify. A administração exige uma conta Supabase autorizada em nativa_admins. As categorias e promoções dependem da migração 003, e o envio de fotos depende da migração 004.
 
 ## Uso da loja
 

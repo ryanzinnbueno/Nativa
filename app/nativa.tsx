@@ -2,6 +2,9 @@
 import HeroCarousel from "./hero-carousel";
 import { defaultBanners, type Banner } from "./banner-data";
 import { CatalogPanel, ReportsPanel } from "./admin-panels";
+import { CategoriesPanel } from "./categories-panel";
+import { defaultCategories, type Category } from "./category-data";
+import { sellingPrice } from "../lib/pricing";
 import { useEffect, useState, useRef, useCallback, FormEvent } from "react";
 import {
   Leaf,
@@ -35,7 +38,7 @@ import {
   Sun,
 } from "lucide-react";
 import { products as demoProducts, money, statuses } from "./catalog";
-type Product = (typeof demoProducts)[number];
+type Product = (typeof demoProducts)[number] & { sale_price?: number | null };
 type CartItem = { id: string; qty: number };
 type Customer = {
   id: string;
@@ -82,6 +85,7 @@ type StoreData = {
   orders: Order[];
   customers: Customer[];
   phone: string;
+  categories: Category[];
   banners?: Banner[];
   banner_seconds?: number;
   banner_autoplay?: boolean;
@@ -228,7 +232,7 @@ export default function Nativa() {
     } | null>(null),
     [submitError, setSubmitError] = useState("");
   const [cartReady, setCartReady] = useState(false),
-    [products, setProducts] = useState(demoProducts),
+    [products, setProducts] = useState<Product[]>(demoProducts),
     [admin, setAdmin] = useState(false),
     [loginError, setLoginError] = useState(""),
     [loginBusy, setLoginBusy] = useState(false);
@@ -236,11 +240,13 @@ export default function Nativa() {
   const [bannerSeconds, setBannerSeconds] = useState(7);
   const [bannerAutoplay, setBannerAutoplay] = useState(true);
   const [storeError, setStoreError] = useState("");
+  const [storeCategories, setStoreCategories] = useState(defaultCategories);
   const categories = [
-    ...baseCategories,
-    ...Array.from(new Set(products.map((p) => p.category)))
-      .filter((c) => !baseCategories.some((b) => b.name === c))
-      .map((name) => ({ name, icon: Leaf })),
+    { name: "Todos", icon: Leaf },
+    ...storeCategories.map((c) => ({
+      name: c.name,
+      icon: baseCategories.find((b) => b.name === c.name)?.icon || Leaf,
+    })),
   ];
   const requestKey = useRef("");
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -304,6 +310,12 @@ export default function Nativa() {
       const d = await api();
       setStoreError("");
       setProducts(d.products);
+      setStoreCategories(d.categories);
+      setCategory((c) =>
+        c === "Todos" || d.categories.some((cat) => cat.name === c)
+          ? c
+          : "Todos",
+      );
       if (d.banners) setBanners(d.banners);
       setBannerSeconds(d.banner_seconds ?? 7);
       setBannerAutoplay(d.banner_autoplay ?? true);
@@ -318,12 +330,18 @@ export default function Nativa() {
   useEffect(() => {
     let cancelled = false;
     const restore = async () => {
-      let available = demoProducts;
+      let available: Product[] = demoProducts;
       try {
         const d = await api();
         if (cancelled) return;
         available = d.products;
         setProducts(d.products);
+        setStoreCategories(d.categories);
+        setCategory((c) =>
+          c === "Todos" || d.categories.some((cat) => cat.name === c)
+            ? c
+            : "Todos",
+        );
         if (d.banners) setBanners(d.banners);
         setBannerSeconds(d.banner_seconds ?? 7);
         setBannerAutoplay(d.banner_autoplay ?? true);
@@ -393,7 +411,12 @@ export default function Nativa() {
     );
   const count = cart.reduce((s, i) => s + i.qty, 0),
     total = cart.reduce(
-      (s, i) => s + (products.find((p) => p.id === i.id)?.price || 0) * i.qty,
+      (s, i) =>
+        s +
+        (products.find((p) => p.id === i.id)
+          ? sellingPrice(products.find((p) => p.id === i.id)!)
+          : 0) *
+          i.qty,
       0,
     );
   const filtered = products
@@ -407,9 +430,9 @@ export default function Nativa() {
     )
     .sort((a, b) =>
       sort === "menor"
-        ? a.price - b.price
+        ? sellingPrice(a) - sellingPrice(b)
         : sort === "maior"
-          ? b.price - a.price
+          ? sellingPrice(b) - sellingPrice(a)
           : 0,
     );
   const toggleFavorite = (id: string) =>
@@ -717,31 +740,35 @@ export default function Nativa() {
                   image: "/images/category-graos.webp?v=1",
                   eyebrow: "PARA SUA ROTINA",
                 },
-              ].map((card, index) => (
-                <button
-                  key={card.category}
-                  className={"category-story category-story-" + index}
-                  onClick={() => {
-                    setCategory(card.category);
-                    setSearch("");
-                    setFavoriteOnly(false);
-                    document
-                      .getElementById("catalogo")
-                      ?.scrollIntoView({ behavior: "smooth" });
-                  }}
-                  aria-label={`Explorar ${card.title}`}
-                >
-                  <img src={card.image} alt="" loading="lazy" />
-                  <div className="category-story-copy">
-                    <span>{card.eyebrow}</span>
-                    <h3>{card.title}</h3>
-                    <p>{card.description}</p>
-                    <span className="category-story-link">
-                      Explorar categoria <Plus size={16} />
-                    </span>
-                  </div>
-                </button>
-              ))}
+              ]
+                .filter((card) =>
+                  storeCategories.some((entry) => entry.name === card.category),
+                )
+                .map((card, index) => (
+                  <button
+                    key={card.category}
+                    className={"category-story category-story-" + index}
+                    onClick={() => {
+                      setCategory(card.category);
+                      setSearch("");
+                      setFavoriteOnly(false);
+                      document
+                        .getElementById("catalogo")
+                        ?.scrollIntoView({ behavior: "smooth" });
+                    }}
+                    aria-label={`Explorar ${card.title}`}
+                  >
+                    <img src={card.image} alt="" loading="lazy" />
+                    <div className="category-story-copy">
+                      <span>{card.eyebrow}</span>
+                      <h3>{card.title}</h3>
+                      <p>{card.description}</p>
+                      <span className="category-story-link">
+                        Explorar categoria <Plus size={16} />
+                      </span>
+                    </div>
+                  </button>
+                ))}
             </div>
             <span className="category-swipe">
               Deslize para descobrir mais categorias
@@ -839,6 +866,9 @@ export default function Nativa() {
                       />
                     </button>
                     <span className="product-tag">{p.tag}</span>
+                    {p.sale_price != null && (
+                      <span className="sale-badge">Em oferta</span>
+                    )}
                     <button
                       className="favorite"
                       onClick={() => toggleFavorite(p.id)}
@@ -863,7 +893,15 @@ export default function Nativa() {
                     <div className="product-bottom">
                       <div>
                         <small>{p.weight}</small>
-                        <strong>{money(p.price)}</strong>
+                        {p.sale_price != null && (
+                          <del
+                            className="original-price"
+                            aria-label="Preço original"
+                          >
+                            {money(p.price)}
+                          </del>
+                        )}
+                        <strong>{money(sellingPrice(p))}</strong>
                       </div>
                       <button
                         className="add"
@@ -1026,6 +1064,7 @@ export default function Nativa() {
               { id: "orders", label: "Pedidos", icon: Package },
               { id: "customers", label: "Clientes", icon: Users },
               { id: "products", label: "Produtos", icon: Package },
+              { id: "categories", label: "Categorias", icon: Leaf },
               { id: "banners", label: "Banners", icon: SlidersHorizontal },
               { id: "reports", label: "Relatórios", icon: Download },
               { id: "settings", label: "Configurações", icon: Settings },
@@ -1063,11 +1102,13 @@ export default function Nativa() {
                         ? "CLIENTES"
                         : tab === "products"
                           ? "PRODUTOS"
-                          : tab === "banners"
-                            ? "BANNERS"
-                            : tab === "reports"
-                              ? "RELATÓRIOS"
-                              : "CONFIGURAÇÕES"}
+                          : tab === "categories"
+                            ? "CATEGORIAS"
+                            : tab === "banners"
+                              ? "BANNERS"
+                              : tab === "reports"
+                                ? "RELATÓRIOS"
+                                : "CONFIGURAÇÕES"}
                 </span>
                 <h1>
                   {tab === "overview"
@@ -1078,11 +1119,13 @@ export default function Nativa() {
                         ? "Gente que faz parte."
                         : tab === "products"
                           ? "Sua seleção natural."
-                          : tab === "banners"
-                            ? "Uma vitrine com a sua cara."
-                            : tab === "reports"
-                              ? "Um olhar sobre os pedidos."
-                              : "Do seu jeito."}
+                          : tab === "categories"
+                            ? "Cada escolha, seu lugar."
+                            : tab === "banners"
+                              ? "Uma vitrine com a sua cara."
+                              : tab === "reports"
+                                ? "Um olhar sobre os pedidos."
+                                : "Do seu jeito."}
                 </h1>
                 <p>
                   {tab === "overview"
@@ -1110,6 +1153,7 @@ export default function Nativa() {
                 ["orders", "Pedidos"],
                 ["customers", "Clientes"],
                 ["products", "Produtos"],
+                ["categories", "Categorias"],
                 ["banners", "Banners"],
                 ["reports", "Relatórios"],
                 ["settings", "Ajustes"],
@@ -1391,6 +1435,13 @@ export default function Nativa() {
                 )}
               </>
             )}
+            {tab === "categories" && (
+              <CategoriesPanel
+                onSaved={() => {
+                  void loadStore();
+                }}
+              />
+            )}
             {(tab === "products" || tab === "banners") && (
               <CatalogPanel
                 key={tab}
@@ -1558,7 +1609,10 @@ export default function Nativa() {
               <span className="detail-weight">
                 {selected.weight} • {selected.subtitle}
               </span>
-              <strong>{money(selected.price)}</strong>
+              {selected.sale_price != null && (
+                <del className="original-price">De {money(selected.price)}</del>
+              )}
+              <strong>{money(sellingPrice(selected))}</strong>
               <button
                 className="primary"
                 disabled={!cartReady}
@@ -1609,7 +1663,7 @@ export default function Nativa() {
                         </button>
                       </div>
                     </div>
-                    <strong>{money(p.price * i.qty)}</strong>
+                    <strong>{money(sellingPrice(p) * i.qty)}</strong>
                     <button
                       className="icon-btn remove"
                       aria-label={`Remover ${p.name}`}

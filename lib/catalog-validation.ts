@@ -31,6 +31,16 @@ function base(b: Record<string, unknown>) {
   };
 }
 export function validateProduct(b: Record<string, unknown>) {
+  const sale_price = b.sale_price ?? null;
+  if (
+    sale_price !== null &&
+    (!Number.isInteger(sale_price) ||
+      (sale_price as number) < 1 ||
+      (sale_price as number) >= (b.price as number))
+  )
+    throw new Error(
+      "O preço promocional deve ser maior que zero e menor que o preço original.",
+    );
   if (
     !Number.isInteger(b.price) ||
     (b.price as number) < 1 ||
@@ -44,11 +54,24 @@ export function validateProduct(b: Record<string, unknown>) {
     category: text(b.category, 60, true),
     weight: text(b.weight, 60, true),
     price: b.price as number,
+    sale_price: sale_price as number | null,
     tag: text(b.tag, 60),
     image: imageAddress(b.image),
     description: text(b.description, 2000),
     ingredients: text(b.ingredients, 2000),
   };
+}
+export function validateCategory(b: Record<string, unknown>) {
+  const name = text(b.name, 60, true);
+  if (name.toLocaleLowerCase("pt-BR") === "todos")
+    throw new Error("Escolha outro nome para a categoria.");
+  if (
+    !Number.isInteger(b.position) ||
+    (b.position as number) < 0 ||
+    (b.position as number) > 999
+  )
+    throw new Error("Confira a ordem de exibição.");
+  return { id: text(b.id, 80, true), name, position: b.position as number };
 }
 export function validateBanner(b: Record<string, unknown>) {
   return {

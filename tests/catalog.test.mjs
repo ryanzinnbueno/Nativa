@@ -1,5 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import {sellingPrice} from '../lib/pricing.ts';
+import {validateCategory} from '../lib/catalog-validation.ts';
 import {
   validateProduct,
   validateBanner,
@@ -48,4 +50,14 @@ test("catalog input restricts prices, visibility, order and image protocols", ()
       accent: "",
     }),
   );
+});
+
+test('category names and promotional amounts are validated, with regular-price fallback',()=>{
+ const p={id:'new',name:'Aveia',subtitle:'',category:'Cereais',weight:'200 g',price:1250,tag:'',image:'/images/aveia.jpg',description:'',ingredients:'',active:true,position:0};
+ assert.equal(sellingPrice(p),1250);assert.equal(sellingPrice({...p,sale_price:1000}),1000);
+ assert.equal(validateProduct({...p,sale_price:1000}).sale_price,1000);
+ assert.equal(validateProduct({...p,sale_price:null}).sale_price,null);
+ for(const sale_price of [0,-1,1250,2000,1.5,'1000'])assert.throws(()=>validateProduct({...p,sale_price}));
+ assert.equal(validateCategory({id:'new',name:' Flores ',position:3}).name,'Flores');
+ for(const name of ['','Todos','todos'])assert.throws(()=>validateCategory({id:'new',name,position:0}));
 });

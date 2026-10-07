@@ -47,3 +47,7 @@ next-env.d.ts
 
 # Local compiler cache
 *.tsbuildinfo
+
+# Share setup placeholders, never real credentials
+!.env.example
+/.netlify/

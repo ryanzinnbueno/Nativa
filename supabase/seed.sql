@@ -1,0 +1,9 @@
+-- Catálogo ilustrativo. Não sobrescreve produtos existentes.
+insert into public.nativa_products (id,name,subtitle,category,weight,price,tag,image,description,ingredients,position) values
+('caju','Castanha de caju','Torrada • sem sal','Castanhas','200 g',2290,'Queridinho','/images/caju.jpg','Crocância e sabor para acompanhar suas pausas. Uma opção para petiscar ou dar um toque especial às receitas.','Castanha de caju. Contém castanhas.',0),
+('granola','Granola artesanal','Aveia, sementes e castanhas','Grãos e cereais','300 g',1890,'Para começar o dia','/images/granola.jpg?v=2','Um mix crocante para sua tigela de frutas ou iogurte. Feita para trazer mais textura ao café da manhã.','Aveia, sementes e castanhas. Consulte o rótulo quanto a glúten.',1),
+('hibisco','Chá de hibisco','Flores desidratadas','Chás e ervas','50 g',1290,'Uma pausa para você','/images/hibisco.jpg','Flores de hibisco para uma infusão de cor intensa e sabor levemente ácido. Experimente quente ou com gelo.','Flores de hibisco desidratadas.',2),
+('mix','Mix de castanhas','Uma seleção cheia de sabor','Castanhas','200 g',2490,'Seleção Nativa','/images/mix.jpg','Castanhas e frutas secas para levar com você e compartilhar. Um pouco de cada sabor em uma só seleção.','Castanha de caju, amêndoas, nozes e uvas-passas. Contém castanhas.',3),
+('aveia','Aveia em flocos','Versátil para suas receitas','Grãos e cereais','500 g',990,'Na despensa','/images/aveia.jpg','Do mingau às receitas de forno: um ingrediente simples que faz parte de muitos momentos do dia.','Aveia em flocos. Consulte o rótulo quanto a glúten.',4),
+('frutas','Damasco seco','Sabor e doçura natural','Frutas secas','150 g',1690,'Doçura natural','/images/frutas.jpg','Sabores intensos para um lanche ou para acompanhar sua seleção de castanhas.','Damasco seco. Consulte o rótulo para sulfitos.',5)
+on conflict (id) do nothing;

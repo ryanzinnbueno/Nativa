@@ -36,3 +36,5 @@
 
 
 .add{min-width:44px;min-height:44px}.add svg{flex-shrink:0}
+
+.admin-login{padding:56px 20px 100px;min-height:60vh;display:flex;justify-content:center}.admin-login .settings-card{width:100%;max-width:460px}.admin-login h1{font-size:34px;margin:16px 0}.admin-login .eyebrow{display:block;margin-top:15px}.admin-login .checkout-form{padding:0}.admin-actions{display:flex;align-items:center;gap:14px}

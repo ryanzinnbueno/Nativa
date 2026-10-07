@@ -1,8 +1,141 @@
-import {getChatGPTUser} from '../../chatgpt-auth';
-import {database} from '../../../db/raw';
-import {products,statuses} from '../../catalog';
-export const dynamic='force-dynamic';
-const reply=(value:unknown,status=200)=>Response.json(value,{status,headers:{'Cache-Control':'no-store'}});
-export async function GET(){try{const user=await getChatGPTUser();if(!user)return reply({error:'Entre para acessar seus dados.'},401);const db=database();const [orders,customers,settings]=await Promise.all([db.prepare('SELECT * FROM orders WHERE owner = ? ORDER BY created DESC LIMIT 500').bind(user.userId).all(),db.prepare('SELECT * FROM customers WHERE owner = ? ORDER BY created DESC LIMIT 500').bind(user.userId).all(),db.prepare('SELECT phone FROM settings WHERE owner = ?').bind(user.userId).first()]);return reply({orders:orders.results.map((o:any)=>({...o,items:JSON.parse(o.items)})),customers:customers.results,phone:(settings as any)?.phone||''});}catch(e){console.error('Store read failed',e);return reply({error:'Não foi possível carregar os dados. Tente novamente.'},503);}}
-export async function POST(request:Request){try{const user=await getChatGPTUser();if(!user)return reply({error:'Entre para registrar o pedido.'},401);const body=await request.json() as any;const name=String(body.name||'').trim(),phone=String(body.phone||'').replace(/\D/g,''),key=String(body.requestKey||'');if(name.length<2||name.length>100||!/^\d{10,11}$/.test(phone)||!/^[-a-zA-Z0-9]{10,80}$/.test(key))return reply({error:'Confira seu nome e um telefone com DDD.'},400);if(!['Retirada','Entrega'].includes(body.delivery)||!['Pix','Cartão na retirada','A combinar'].includes(body.payment)||!['Site','WhatsApp'].includes(body.channel))return reply({error:'Confira a forma de entrega e pagamento.'},400);const address=String(body.address||'').trim();if(body.delivery==='Entrega'&&(address.length<8||address.length>400))return reply({error:'Informe o endereço completo para entrega.'},400);if(!Array.isArray(body.items)||body.items.length<1||body.items.length>products.length)return reply({error:'Sua sacola está vazia ou contém itens inválidos.'},400);const seen=new Set();const items=body.items.map((i:any)=>{const p=products.find(p=>p.id===i.id);if(!p||!Number.isInteger(i.qty)||i.qty<1||i.qty>99||seen.has(i.id))throw new Error('invalid items');seen.add(i.id);return{id:p.id,name:p.name,weight:p.weight,price:p.price,qty:i.qty};});const total=items.reduce((s:number,i:any)=>s+i.price*i.qty,0);const db=database();const previous=await db.prepare('SELECT id,total FROM orders WHERE owner = ? AND request_key = ?').bind(user.userId,key).first();if(previous)return reply(previous);const customer=await db.prepare('SELECT id FROM customers WHERE owner = ? AND phone = ?').bind(user.userId,phone).first() as any;const customerId=customer?.id||crypto.randomUUID(),id=crypto.randomUUID(),now=new Date().toISOString();await db.batch([db.prepare('INSERT INTO customers (id,owner,name,phone,notes,created) VALUES (?,?,?,?,?,?) ON CONFLICT(owner,phone) DO UPDATE SET name=excluded.name').bind(customerId,user.userId,name,phone,'',now),db.prepare('INSERT INTO orders (id,owner,customer_id,items,total,status,channel,delivery,address,payment,notes,created,request_key) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)').bind(id,user.userId,customerId,JSON.stringify(items),total,'Novo',body.channel,body.delivery,address,body.payment,String(body.notes||'').slice(0,1000),now,key)]);return reply({id,total},201);}catch(e){console.error('Order write failed',e);return reply({error:'Não foi possível registrar o pedido. Sua sacola foi mantida; tente novamente.'},503);}}
-export async function PATCH(request:Request){try{const user=await getChatGPTUser();if(!user)return reply({error:'Entre para acessar o CRM.'},401);const b=await request.json() as any,db=database();if(b.type==='status'&&statuses.includes(b.status)){const r=await db.prepare('UPDATE orders SET status = ? WHERE id = ? AND owner = ?').bind(b.status,b.id,user.userId).run();if(!r.meta.changes)return reply({error:'Pedido não encontrado.'},404);}else if(b.type==='notes'){const r=await db.prepare('UPDATE customers SET notes = ? WHERE id = ? AND owner = ?').bind(String(b.notes||'').slice(0,3000),b.id,user.userId).run();if(!r.meta.changes)return reply({error:'Cliente não encontrado.'},404);}else if(b.type==='settings'){const phone=String(b.phone||'').replace(/\D/g,'');if(phone&&!/^55\d{10,11}$/.test(phone))return reply({error:'Use 55 + DDD + número do WhatsApp.'},400);await db.prepare('INSERT INTO settings (owner,phone) VALUES (?,?) ON CONFLICT(owner) DO UPDATE SET phone=excluded.phone').bind(user.userId,phone).run();}else return reply({error:'Dados inválidos.'},400);return reply({ok:true});}catch(e){console.error('CRM update failed',e);return reply({error:'Não foi possível salvar. Tente novamente.'},503);}}
+import { createClient, adminClient } from "../../../lib/supabase/server";
+import { reply, sameOrigin } from "../../../lib/supabase/http";
+import { statuses } from "../../catalog";
+export const dynamic = "force-dynamic";
+
+export async function GET(request: Request) {
+  try {
+    if (new URL(request.url).searchParams.get("scope") === "admin") {
+      const client = await adminClient();
+      if (!client)
+        return reply(
+          { error: "Entre com uma conta autorizada para acessar o CRM." },
+          401,
+        );
+      const [orders, customers, settings] = await Promise.all([
+        client
+          .from("nativa_orders")
+          .select("*")
+          .order("created", { ascending: false })
+          .limit(500),
+        client
+          .from("nativa_customers")
+          .select("*")
+          .order("created", { ascending: false })
+          .limit(500),
+        client.from("nativa_settings").select("phone").eq("id", 1).single(),
+      ]);
+      if (orders.error || customers.error || settings.error)
+        throw new Error("Database read failed");
+      return reply({
+        orders: orders.data,
+        customers: customers.data,
+        phone: settings.data.phone,
+      });
+    }
+    const client = await createClient();
+    const [catalog, settings] = await Promise.all([
+      client
+        .from("nativa_products")
+        .select(
+          "id,name,subtitle,category,weight,price,tag,image,description,ingredients",
+        )
+        .eq("active", true)
+        .order("position"),
+      client.from("nativa_settings").select("phone").eq("id", 1).single(),
+    ]);
+    if (catalog.error || settings.error)
+      throw new Error("Database read failed");
+    return reply({ products: catalog.data, phone: settings.data.phone });
+  } catch {
+    return reply(
+      {
+        error:
+          "A loja ainda não conseguiu se conectar ao banco de dados. Tente novamente em instantes.",
+      },
+      503,
+    );
+  }
+}
+export async function POST(request: Request) {
+  if (!sameOrigin(request)) return reply({ error: "Origem inválida." }, 403);
+  try {
+    const text = await request.text();
+    if (text.length > 12000)
+      return reply({ error: "Pedido muito grande." }, 400);
+    let body;
+    try {
+      body = JSON.parse(text);
+    } catch {
+      return reply({ error: "Dados inválidos." }, 400);
+    }
+    const client = await createClient();
+    const { data, error } = await client.rpc("nativa_place_order", {
+      payload: body,
+    });
+    if (error) {
+      if (error.code === "22023") return reply({ error: error.message }, 400);
+      if (error.code === "P0001") return reply({ error: error.message }, 429);
+      throw error;
+    }
+    return reply(data, 201);
+  } catch {
+    return reply(
+      {
+        error:
+          "Não foi possível registrar o pedido. Sua sacola foi mantida; tente novamente.",
+      },
+      503,
+    );
+  }
+}
+export async function PATCH(request: Request) {
+  if (!sameOrigin(request)) return reply({ error: "Origem inválida." }, 403);
+  try {
+    const client = await adminClient();
+    if (!client)
+      return reply(
+        { error: "Entre com uma conta autorizada para acessar o CRM." },
+        401,
+      );
+    const b = await request.json();
+    let result;
+    if (
+      b.type === "status" &&
+      statuses.includes(b.status) &&
+      typeof b.id === "string"
+    ) {
+      result = await client
+        .from("nativa_orders")
+        .update({ status: b.status })
+        .eq("id", b.id)
+        .select("id");
+    } else if (
+      b.type === "notes" &&
+      typeof b.id === "string" &&
+      typeof b.notes === "string" &&
+      b.notes.length <= 3000
+    ) {
+      result = await client
+        .from("nativa_customers")
+        .update({ notes: b.notes })
+        .eq("id", b.id)
+        .select("id");
+    } else if (b.type === "settings" && typeof b.phone === "string") {
+      const phone = b.phone.replace(/\D/g, "");
+      if (phone && !/^55\d{10,11}$/.test(phone))
+        return reply({ error: "Use 55 + DDD + número do WhatsApp." }, 400);
+      result = await client
+        .from("nativa_settings")
+        .update({ phone })
+        .eq("id", 1)
+        .select("id");
+    } else return reply({ error: "Dados inválidos." }, 400);
+    if (result.error) throw result.error;
+    if (!result.data?.length)
+      return reply({ error: "Registro não encontrado." }, 404);
+    return reply({ ok: true });
+  } catch {
+    return reply({ error: "Não foi possível salvar. Tente novamente." }, 503);
+  }
+}

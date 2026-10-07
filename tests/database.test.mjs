@@ -70,6 +70,15 @@ before(async () => {
       "utf8",
     ),
   );
+  await db.exec(
+    await readFile(
+      new URL(
+        "../supabase/migrations/202610070006_banner_image_settings.sql",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+  );
 });
 after(async () => {
   await db?.close();
@@ -522,4 +531,41 @@ test("trash is admin-only, deleted products cannot be ordered, and restoring pre
     ),
   );
   await db.exec("update nativa_products set active=true where id='caju'");
+});
+
+test("banner framing persists for admins and is publicly readable without granting edit access", async () => {
+  const settings = {
+    desktop: { fit: "contain", zoom: 100, x: 50, y: 50 },
+    mobile: { fit: "cover", zoom: 130, x: 40, y: 60 },
+  };
+  const id = (await db.query("select id from nativa_banners limit 1")).rows[0]
+    .id;
+  await as("authenticated", admin, () =>
+    db.query("update nativa_banners set image_settings=$1::jsonb where id=$2", [
+      JSON.stringify(settings),
+      id,
+    ]),
+  );
+  await as("anon", null, async () =>
+    assert.deepEqual(
+      (
+        await db.query(
+          "select image_settings from nativa_banners where id=$1",
+          [id],
+        )
+      ).rows[0].image_settings,
+      settings,
+    ),
+  );
+  await as("authenticated", outsider, () =>
+    db.query("update nativa_banners set image_settings=null where id=$1", [id]),
+  );
+  assert.deepEqual(
+    (
+      await db.query("select image_settings from nativa_banners where id=$1", [
+        id,
+      ])
+    ).rows[0].image_settings,
+    settings,
+  );
 });

@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Pause, Play } from "lucide-react";
 
 import { type Banner } from "./banner-data";
+import { BannerImage } from "./banner-image";
 
 export default function HeroCarousel({
   onExplore,
@@ -98,12 +99,7 @@ export default function HeroCarousel({
         aria-roledescription="slide"
         aria-label={`${current + 1} de ${slides.length}: ${slide.category}`}
       >
-        <img
-          className="banner-image"
-          src={slide.image}
-          alt={slide.alt}
-          fetchPriority={index === 0 ? "high" : "auto"}
-        />
+        <BannerImage banner={slide} priority={current === 0} />
         <div className="banner-message">
           {!slide.image_only && (
             <>

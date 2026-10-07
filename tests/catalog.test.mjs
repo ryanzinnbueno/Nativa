@@ -102,3 +102,54 @@ test("image-only banners allow an empty title and reject an invalid format", () 
   assert.throws(() => validateBanner({ ...banner, image_only: false }));
   assert.throws(() => validateBanner({ ...banner, image_only: "yes" }));
 });
+
+test("banner framing accepts independent screens and rejects invalid dimensions and image URLs", () => {
+  const banner = {
+    id: "framed",
+    active: true,
+    position: 0,
+    category: "Castanhas",
+    tag: "",
+    title: "",
+    accent: "",
+    image_only: true,
+    heading: "",
+    heading_accent: "",
+    description: "",
+    cta: "Ver",
+    alt: "Castanhas",
+    image: "/images/caju.jpg",
+  };
+  const frame = { fit: "contain", zoom: 100, x: 50, y: 50 };
+  const settings = {
+    desktop: frame,
+    mobile: { fit: "cover", zoom: 140, x: 25, y: 60 },
+    mobile_image: "https://example.com/mobile.webp",
+  };
+  assert.deepEqual(
+    validateBanner({ ...banner, image_settings: settings }).image_settings,
+    settings,
+  );
+  assert.equal(Object.hasOwn(validateBanner(banner), "image_settings"), false);
+  for (const change of [
+    { fit: "stretch" },
+    { zoom: 99 },
+    { zoom: 201 },
+    { zoom: "120" },
+    { x: -1 },
+    { y: 101 },
+    { x: NaN },
+  ])
+    assert.throws(() =>
+      validateBanner({
+        ...banner,
+        image_settings: { desktop: { ...frame, ...change }, mobile: frame },
+      }),
+    );
+  assert.throws(() =>
+    validateBanner({
+      ...banner,
+      image_settings: { ...settings, mobile_image: "javascript:alert(1)" },
+    }),
+  );
+});

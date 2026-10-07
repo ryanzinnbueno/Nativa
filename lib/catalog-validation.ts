@@ -84,11 +84,52 @@ export function validateBanner(b: Record<string, unknown>) {
     title: text(b.title, 100),
     accent: text(b.accent, 100),
     image_only,
+    ...(b.image_settings !== undefined
+      ? { image_settings: validateImageSettings(b.image_settings) }
+      : {}),
     heading: text(b.heading, 40, !image_only),
     heading_accent: text(b.heading_accent, 40),
     description: text(b.description, 250),
     cta: text(b.cta, 60, true),
     image: imageAddress(b.image),
     alt: text(b.alt, 180, true),
+  };
+}
+
+function validateImageSettings(value: unknown) {
+  if (value === null) return null;
+  if (!value || typeof value !== "object" || Array.isArray(value))
+    throw new Error("Confira o enquadramento da imagem.");
+  const settings = value as Record<string, unknown>;
+  const frame = (value: unknown) => {
+    if (!value || typeof value !== "object" || Array.isArray(value))
+      throw new Error("Confira o enquadramento da imagem.");
+    const f = value as Record<string, unknown>;
+    if (
+      !["contain", "cover"].includes(f.fit as string) ||
+      !Number.isInteger(f.zoom) ||
+      (f.zoom as number) < 100 ||
+      (f.zoom as number) > 200 ||
+      !Number.isInteger(f.x) ||
+      (f.x as number) < 0 ||
+      (f.x as number) > 100 ||
+      !Number.isInteger(f.y) ||
+      (f.y as number) < 0 ||
+      (f.y as number) > 100
+    )
+      throw new Error("Confira o enquadramento da imagem.");
+    return {
+      fit: f.fit as string,
+      zoom: f.zoom as number,
+      x: f.x as number,
+      y: f.y as number,
+    };
+  };
+  return {
+    desktop: frame(settings.desktop),
+    mobile: frame(settings.mobile),
+    ...(settings.mobile_image
+      ? { mobile_image: imageAddress(settings.mobile_image) }
+      : {}),
   };
 }

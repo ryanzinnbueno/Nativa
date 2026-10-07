@@ -57,7 +57,7 @@ async function save(request: Request, insert: boolean) {
     const raw = await request.text();
     if (raw.length > 12000)
       return reply({ error: "Conteúdo muito grande." }, 400);
-    let data: Record<string, string | number | boolean | null>, table: string;
+    let data: Record<string, unknown>, table: string;
     try {
       const body = JSON.parse(raw);
       if (

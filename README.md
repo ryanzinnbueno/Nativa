@@ -95,3 +95,5 @@ O site está conectado ao GitHub e publicado na Netlify. A administração exige
 Catálogo, imagens, textos e preços são demonstrativos. Revise os dados reais e rótulos antes de atender clientes. Configure WhatsApp, entrega, estoque e pagamento. O limite por telefone é básico: antes de uma operação pública maior, adicione proteção contra automação e defina a política de privacidade e retenção.
 
 Referências: [Supabase SSR](https://supabase.com/docs/guides/auth/server-side/creating-a-client), [Supabase RLS](https://supabase.com/docs/guides/database/postgres/row-level-security), [Next.js na Netlify](https://docs.netlify.com/build/frameworks/framework-setup-guides/nextjs/overview/).
+
+A migração 006 (`supabase/migrations/202610070006_banner_image_settings.sql`) adiciona o enquadramento das imagens dos banners. Aplicar antes desta versão. Em Banners, ajuste separadamente Celular e Computador: imagem inteira ou preencher, zoom e posição horizontal/vertical. É possível enviar uma arte diferente para celular. A prévia muda ao ajustar e só vai para a loja depois de Salvar alterações. Banners antigos mantêm o enquadramento padrão.

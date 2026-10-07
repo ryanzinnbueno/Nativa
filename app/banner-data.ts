@@ -1,6 +1,8 @@
+import type { BannerImageSettings } from "./banner-image";
 export type Banner = {
   id: string;
   image_only?: boolean;
+  image_settings?: BannerImageSettings | null;
   category: string;
   tag: string;
   title: string;

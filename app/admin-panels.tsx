@@ -11,6 +11,8 @@ import { products as examples, money, statuses } from "./catalog";
 import { Banner, defaultBanners } from "./banner-data";
 import { type Category } from "./category-data";
 import { ImageUpload } from "./image-upload";
+import { BannerImageEditor } from "./banner-image-editor";
+import { imageFrame } from "./banner-image";
 import { TrashAction } from "./trash-panel";
 import { sellingPrice } from "../lib/pricing";
 type Product = (typeof examples)[number] & {
@@ -402,11 +404,40 @@ export function CatalogPanel({
                   }}
                 />
               )}
+              {kind === "product" && (
+                <button className="primary" disabled={busy || uploadBusy}>
+                  {busy ? "Salvando…" : "Salvar alterações"}
+                </button>
+              )}
+            </div>
+          </div>
+          {kind === "banner" && (
+            <>
+              <BannerImageEditor
+                banner={item as Banner}
+                onChange={setItem}
+                onBusy={setUploadBusy}
+                onMobileUploaded={(url) =>
+                  setItem((current) => {
+                    if (!current) return current;
+                    const banner = current as Banner;
+                    return {
+                      ...banner,
+                      image_settings: {
+                        desktop: imageFrame(banner, "desktop"),
+                        mobile: imageFrame(banner, "mobile"),
+                        ...banner.image_settings,
+                        mobile_image: url,
+                      },
+                    };
+                  })
+                }
+              />
               <button className="primary" disabled={busy || uploadBusy}>
                 {busy ? "Salvando…" : "Salvar alterações"}
               </button>
-            </div>
-          </div>
+            </>
+          )}
         </form>
       ) : (
         <div className="management-grid">

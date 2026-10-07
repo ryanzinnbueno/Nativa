@@ -92,7 +92,7 @@ export default function HeroCarousel({
       }}
     >
       <div
-        className={`nativa-banner nativa-banner-${current}`}
+        className={`nativa-banner nativa-banner-${current}${slide.image_only ? " banner-image-only" : ""}`}
         key={slide.id}
         role="group"
         aria-roledescription="slide"
@@ -104,19 +104,15 @@ export default function HeroCarousel({
           alt={slide.alt}
           fetchPriority={index === 0 ? "high" : "auto"}
         />
-        <div className="banner-top">
-          <span>{slide.tag}</span>
-          <p>
-            {slide.title}
-            <br />
-            {slide.accent}
-          </p>
-        </div>
         <div className="banner-message">
-          <h1>
-            {slide.heading} <span>{slide.heading_accent}</span>
-          </h1>
-          <p>{slide.description}</p>
+          {!slide.image_only && (
+            <>
+              <h1>
+                {slide.heading} <span>{slide.heading_accent}</span>
+              </h1>
+              <p>{slide.description}</p>
+            </>
+          )}
           <button onClick={() => onExplore(slide.category)}>{slide.cta}</button>
         </div>
       </div>

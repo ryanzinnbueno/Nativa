@@ -11,6 +11,7 @@ import { products as examples, money, statuses } from "./catalog";
 import { Banner, defaultBanners } from "./banner-data";
 import { type Category } from "./category-data";
 import { ImageUpload } from "./image-upload";
+import { TrashAction } from "./trash-panel";
 import { sellingPrice } from "../lib/pricing";
 type Product = (typeof examples)[number] & {
   sale_price?: number | null;
@@ -106,6 +107,7 @@ export function CatalogPanel({
             ...defaultBanners[0],
             id: crypto.randomUUID(),
             category: data?.categories[0]?.name || "",
+            image_only: false,
             heading: "",
             heading_accent: "",
             title: "",
@@ -298,18 +300,32 @@ export function CatalogPanel({
                 </>
               ) : (
                 <>
-                  {field("tag", "Frase no topo", false, 80)}
-                  {field("title", "Primeira mensagem", false, 100)}
-                  {field("accent", "Complemento da mensagem", false, 100)}
-                  <div className="editor-pair">
-                    {field("heading", "Título principal", true, 40)}
-                    {field(
-                      "heading_accent",
-                      "Segunda linha do título",
-                      false,
-                      40,
-                    )}
-                  </div>
+                  <label>
+                    Formato do banner
+                    <select
+                      value={(item as Banner).image_only ? "image" : "text"}
+                      onChange={(e) =>
+                        setItem({
+                          ...item,
+                          image_only: e.target.value === "image",
+                        } as Banner)
+                      }
+                    >
+                      <option value="text">Imagem, título e botão</option>
+                      <option value="image">Somente imagem e botão</option>
+                    </select>
+                  </label>
+                  {!(item as Banner).image_only && (
+                    <>
+                      {field("heading", "Título", true, 40)}
+                      {field(
+                        "heading_accent",
+                        "Complemento do título",
+                        false,
+                        40,
+                      )}
+                    </>
+                  )}
                   {field("cta", "Texto do botão", true, 60)}
                   {field("alt", "Descrição da imagem", true, 180)}
                 </>
@@ -336,16 +352,18 @@ export function CatalogPanel({
                 </select>
                 <small>Crie novas opções na aba Categorias.</small>
               </label>
-              <label>
-                Descrição
-                <textarea
-                  maxLength={kind === "product" ? 2000 : 250}
-                  value={item.description}
-                  onChange={(e) =>
-                    setItem({ ...item, description: e.target.value })
-                  }
-                />
-              </label>
+              {(kind === "product" || !(item as Banner).image_only) && (
+                <label>
+                  Descrição
+                  <textarea
+                    maxLength={kind === "product" ? 2000 : 250}
+                    value={item.description}
+                    onChange={(e) =>
+                      setItem({ ...item, description: e.target.value })
+                    }
+                  />
+                </label>
+              )}
               <div className="editor-pair">
                 <label>
                   Ordem de exibição
@@ -371,6 +389,19 @@ export function CatalogPanel({
                   Mostrar na loja
                 </label>
               </div>
+              {kind === "product" && !isNew && (
+                <TrashAction
+                  kind="product"
+                  id={item.id}
+                  disabled={busy || uploadBusy}
+                  onDone={async () => {
+                    setItem(null);
+                    await load();
+                    onSaved();
+                    setSaved("Produto movido para a lixeira.");
+                  }}
+                />
+              )}
               <button className="primary" disabled={busy || uploadBusy}>
                 {busy ? "Salvando…" : "Salvar alterações"}
               </button>
@@ -393,7 +424,11 @@ export function CatalogPanel({
                   {p.active ? "Visível" : "Oculto"}
                 </span>
                 <h3>
-                  {"name" in p ? p.name : p.heading + " " + p.heading_accent}
+                  {"name" in p
+                    ? p.name
+                    : p.image_only
+                      ? "Banner em imagem"
+                      : p.heading + " " + p.heading_accent}
                 </h3>
                 <p>
                   {p.category}

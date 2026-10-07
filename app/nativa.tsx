@@ -1,6 +1,7 @@
 "use client";
 import HeroCarousel from "./hero-carousel";
 import { defaultBanners, type Banner } from "./banner-data";
+import { TrashPanel, TrashAction } from "./trash-panel";
 import { CatalogPanel, ReportsPanel } from "./admin-panels";
 import { CategoriesPanel } from "./categories-panel";
 import { defaultCategories, type Category } from "./category-data";
@@ -1067,6 +1068,7 @@ export default function Nativa() {
               { id: "categories", label: "Categorias", icon: Leaf },
               { id: "banners", label: "Banners", icon: SlidersHorizontal },
               { id: "reports", label: "Relatórios", icon: Download },
+              { id: "trash", label: "Lixeira", icon: Package },
               { id: "settings", label: "Configurações", icon: Settings },
             ].map((t) => (
               <button
@@ -1108,7 +1110,9 @@ export default function Nativa() {
                               ? "BANNERS"
                               : tab === "reports"
                                 ? "RELATÓRIOS"
-                                : "CONFIGURAÇÕES"}
+                                : tab === "trash"
+                                  ? "LIXEIRA"
+                                  : "CONFIGURAÇÕES"}
                 </span>
                 <h1>
                   {tab === "overview"
@@ -1125,7 +1129,9 @@ export default function Nativa() {
                               ? "Uma vitrine com a sua cara."
                               : tab === "reports"
                                 ? "Um olhar sobre os pedidos."
-                                : "Do seu jeito."}
+                                : tab === "trash"
+                                  ? "Recupere quando precisar."
+                                  : "Do seu jeito."}
                 </h1>
                 <p>
                   {tab === "overview"
@@ -1156,6 +1162,7 @@ export default function Nativa() {
                 ["categories", "Categorias"],
                 ["banners", "Banners"],
                 ["reports", "Relatórios"],
+                ["trash", "Lixeira"],
                 ["settings", "Ajustes"],
               ].map(([id, label]) => (
                 <button
@@ -1452,6 +1459,7 @@ export default function Nativa() {
               />
             )}
             {tab === "reports" && <ReportsPanel />}
+            {tab === "trash" && <TrashPanel onSaved={loadStore} />}
             {tab === "settings" && (
               <div className="settings-card">
                 <MessageCircle size={30} />
@@ -1924,6 +1932,16 @@ export default function Nativa() {
             {currentOrder.notes && (
               <blockquote>{currentOrder.notes}</blockquote>
             )}
+            <TrashAction
+              kind="order"
+              id={currentOrder.id}
+              disabled={saving}
+              onDone={async () => {
+                setCurrentOrder(null);
+                await loadStore();
+                notify("Pedido movido para a lixeira.");
+              }}
+            />
             <label>
               Status do pedido
               <select

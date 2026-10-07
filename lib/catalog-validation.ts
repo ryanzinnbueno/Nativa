@@ -74,13 +74,17 @@ export function validateCategory(b: Record<string, unknown>) {
   return { id: text(b.id, 80, true), name, position: b.position as number };
 }
 export function validateBanner(b: Record<string, unknown>) {
+  if (b.image_only !== undefined && typeof b.image_only !== "boolean")
+    throw new Error("Escolha o formato do banner.");
+  const image_only = b.image_only === true;
   return {
     ...base(b),
     category: text(b.category, 60, true),
     tag: text(b.tag, 80),
     title: text(b.title, 100),
     accent: text(b.accent, 100),
-    heading: text(b.heading, 40, true),
+    image_only,
+    heading: text(b.heading, 40, !image_only),
     heading_accent: text(b.heading_accent, 40),
     description: text(b.description, 250),
     cta: text(b.cta, 60, true),

@@ -36,7 +36,15 @@ before(async () => {
       "utf8",
     ),
   );
-  await db.exec(await readFile(new URL('../supabase/migrations/202610070003_categories_offers.sql',import.meta.url),'utf8'));
+  await db.exec(
+    await readFile(
+      new URL(
+        "../supabase/migrations/202610070003_categories_offers.sql",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+  );
   // Supabase Storage's permission surface in this isolated database, never a live bucket.
   await db.exec(`create schema storage;
     create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);
@@ -44,32 +52,105 @@ before(async () => {
     alter table storage.objects enable row level security;
     grant usage on schema storage to anon,authenticated;
     grant insert,select on storage.objects to authenticated;`);
-  await db.exec(await readFile(new URL('../supabase/migrations/202610070004_image_storage.sql',import.meta.url),'utf8'));
+  await db.exec(
+    await readFile(
+      new URL(
+        "../supabase/migrations/202610070004_image_storage.sql",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+  );
+  await db.exec(
+    await readFile(
+      new URL(
+        "../supabase/migrations/202610070005_trash_image_banners.sql",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+  );
 });
 after(async () => {
   await db?.close();
 });
 
-
-
-test('categories can be created only by admins; renaming updates product and banner selections together',async()=>{
- const insert="insert into nativa_categories(id,name,position) values ('flores','Flores',5)";
- await as('anon',null,()=>assert.rejects(db.exec(insert)));
- await as('authenticated',outsider,()=>assert.rejects(db.exec(insert)));
- await as('authenticated',admin,async()=>{await db.exec(insert);await db.exec("update nativa_categories set name='Nozes e castanhas' where name='Castanhas'");});
- assert.equal((await db.query("select count(*)::int as count from nativa_products where category='Nozes e castanhas'")).rows[0].count,2);
- assert.equal((await db.query("select count(*)::int as count from nativa_banners where category='Nozes e castanhas'")).rows[0].count,1);
- await as('authenticated',outsider,async()=>{assert.equal((await db.query("update nativa_categories set name='Outro nome' where id='flores' returning id")).rows.length,0);});
- await db.exec("update nativa_categories set name='Castanhas' where name='Nozes e castanhas'");
- await assert.rejects(db.exec("update nativa_products set category='Categoria inexistente' where id='caju'"));
+test("categories can be created only by admins; renaming updates product and banner selections together", async () => {
+  const insert =
+    "insert into nativa_categories(id,name,position) values ('flores','Flores',5)";
+  await as("anon", null, () => assert.rejects(db.exec(insert)));
+  await as("authenticated", outsider, () => assert.rejects(db.exec(insert)));
+  await as("authenticated", admin, async () => {
+    await db.exec(insert);
+    await db.exec(
+      "update nativa_categories set name='Nozes e castanhas' where name='Castanhas'",
+    );
+  });
+  assert.equal(
+    (
+      await db.query(
+        "select count(*)::int as count from nativa_products where category='Nozes e castanhas'",
+      )
+    ).rows[0].count,
+    2,
+  );
+  assert.equal(
+    (
+      await db.query(
+        "select count(*)::int as count from nativa_banners where category='Nozes e castanhas'",
+      )
+    ).rows[0].count,
+    1,
+  );
+  await as("authenticated", outsider, async () => {
+    assert.equal(
+      (
+        await db.query(
+          "update nativa_categories set name='Outro nome' where id='flores' returning id",
+        )
+      ).rows.length,
+      0,
+    );
+  });
+  await db.exec(
+    "update nativa_categories set name='Castanhas' where name='Nozes e castanhas'",
+  );
+  await assert.rejects(
+    db.exec(
+      "update nativa_products set category='Categoria inexistente' where id='caju'",
+    ),
+  );
 });
 
-test('marketing uploads allow admins only and do not permit overwrites or customer-document paths',async()=>{
- const insert="insert into storage.objects(bucket_id,name) values ('nativa-images','product/foto.webp')";
- await as('anon',null,()=>assert.rejects(db.exec(insert)));
- await as('authenticated',outsider,()=>assert.rejects(db.exec(insert)));
- await as('authenticated',admin,async()=>{await db.exec(insert);await assert.rejects(db.exec("insert into storage.objects(bucket_id,name) values ('nativa-images','private/document.webp')"));await assert.rejects(db.exec("insert into storage.objects(bucket_id,name) values ('another-bucket','product/foto.webp')"));await assert.rejects(db.exec("update storage.objects set name='product/overwrite.webp'"));});
- assert.equal((await db.query("select public from storage.buckets where id='nativa-images'")).rows[0].public,true);
+test("marketing uploads allow admins only and do not permit overwrites or customer-document paths", async () => {
+  const insert =
+    "insert into storage.objects(bucket_id,name) values ('nativa-images','product/foto.webp')";
+  await as("anon", null, () => assert.rejects(db.exec(insert)));
+  await as("authenticated", outsider, () => assert.rejects(db.exec(insert)));
+  await as("authenticated", admin, async () => {
+    await db.exec(insert);
+    await assert.rejects(
+      db.exec(
+        "insert into storage.objects(bucket_id,name) values ('nativa-images','private/document.webp')",
+      ),
+    );
+    await assert.rejects(
+      db.exec(
+        "insert into storage.objects(bucket_id,name) values ('another-bucket','product/foto.webp')",
+      ),
+    );
+    await assert.rejects(
+      db.exec("update storage.objects set name='product/overwrite.webp'"),
+    );
+  });
+  assert.equal(
+    (
+      await db.query(
+        "select public from storage.buckets where id='nativa-images'",
+      )
+    ).rows[0].public,
+    true,
+  );
 });
 
 test("only authorized admins register products and banners; guests see active entries only", async () => {
@@ -313,17 +394,132 @@ test("repeated checkout is limited per phone and creates no partial record when 
   );
 });
 
-test('promotional prices are validated on the database and preserve previous orders and retries',async()=>{
-  await as('authenticated',outsider,async()=>{assert.equal((await db.query("update nativa_products set sale_price=1800 where id='caju' returning id")).rows.length,0);});
-  await as('authenticated',admin,async()=>{
-    for(const price of [0,-1,2290,3000])await assert.rejects(db.query("update nativa_products set sale_price=$1 where id='caju'",[price]));
+test("promotional prices are validated on the database and preserve previous orders and retries", async () => {
+  await as("authenticated", outsider, async () => {
+    assert.equal(
+      (
+        await db.query(
+          "update nativa_products set sale_price=1800 where id='caju' returning id",
+        )
+      ).rows.length,
+      0,
+    );
+  });
+  await as("authenticated", admin, async () => {
+    for (const price of [0, -1, 2290, 3000])
+      await assert.rejects(
+        db.query("update nativa_products set sale_price=$1 where id='caju'", [
+          price,
+        ]),
+      );
     await db.exec("update nativa_products set sale_price=1800 where id='caju'");
   });
-  const payload=order('promotion-order-001',{phone:'11999992222'});
-  const first=await as('anon',null,()=>place(payload));
-  assert.equal(first.total,3600);assert.equal(first.items[0].price,1800);
-  assert.equal((await db.query("select total from nativa_orders where request_key='checkout-idempotency-001'")).rows[0].total,4580);
-  await as('authenticated',admin,()=>db.exec("update nativa_products set sale_price=null where id='caju'"));
-  const retry=await as('anon',null,()=>place(payload));assert.equal(retry.id,first.id);assert.equal(retry.total,3600);
-  const normal=await as('anon',null,()=>place({...payload,requestKey:'promotion-order-002'}));assert.equal(normal.total,4580);
+  const payload = order("promotion-order-001", { phone: "11999992222" });
+  const first = await as("anon", null, () => place(payload));
+  assert.equal(first.total, 3600);
+  assert.equal(first.items[0].price, 1800);
+  assert.equal(
+    (
+      await db.query(
+        "select total from nativa_orders where request_key='checkout-idempotency-001'",
+      )
+    ).rows[0].total,
+    4580,
+  );
+  await as("authenticated", admin, () =>
+    db.exec("update nativa_products set sale_price=null where id='caju'"),
+  );
+  const retry = await as("anon", null, () => place(payload));
+  assert.equal(retry.id, first.id);
+  assert.equal(retry.total, 3600);
+  const normal = await as("anon", null, () =>
+    place({ ...payload, requestKey: "promotion-order-002" }),
+  );
+  assert.equal(normal.total, 4580);
+});
+
+test("trash is admin-only, deleted products cannot be ordered, and restoring preserves order amounts", async () => {
+  await as("authenticated", outsider, async () => {
+    assert.equal(
+      (
+        await db.query(
+          "update nativa_products set deleted_at=now() where id='caju' returning id",
+        )
+      ).rows.length,
+      0,
+    );
+    assert.equal(
+      (await db.query("update nativa_orders set deleted_at=now() returning id"))
+        .rows.length,
+      0,
+    );
+  });
+  await as("anon", null, () =>
+    assert.rejects(db.exec("update nativa_orders set deleted_at=now()")),
+  );
+  const old = (
+    await db.query(
+      "select id,total,items from nativa_orders order by created limit 1",
+    )
+  ).rows[0];
+  await as("authenticated", admin, () =>
+    db.query("update nativa_orders set deleted_at=now() where id=$1", [old.id]),
+  );
+  assert.equal(
+    (
+      await db.query(
+        "select id from nativa_orders where id=$1 and deleted_at is null",
+        [old.id],
+      )
+    ).rows.length,
+    0,
+  );
+  await as("authenticated", admin, () =>
+    db.query("update nativa_orders set deleted_at=null where id=$1", [old.id]),
+  );
+  const restored = (
+    await db.query("select total,items from nativa_orders where id=$1", [
+      old.id,
+    ])
+  ).rows[0];
+  assert.equal(restored.total, old.total);
+  assert.deepEqual(restored.items, old.items);
+  await as("authenticated", admin, () =>
+    db.exec(
+      "update nativa_products set deleted_at=now(),active=true where id='caju'",
+    ),
+  );
+  await as("anon", null, async () => {
+    assert.equal(
+      (await db.query("select id from nativa_products where id='caju'")).rows
+        .length,
+      0,
+    );
+    await assert.rejects(
+      db.query("select nativa_place_order($1::jsonb)", [
+        JSON.stringify({
+          name: "Cliente teste",
+          phone: "71912348888",
+          requestKey: "trash-reject-0001",
+          delivery: "Retirada",
+          channel: "Site",
+          payment: "Pix",
+          items: [{ id: "caju", qty: 1 }],
+        }),
+      ]),
+    );
+  });
+  await as("authenticated", admin, () =>
+    db.exec(
+      "update nativa_products set deleted_at=null,active=false where id='caju'",
+    ),
+  );
+  await as("anon", null, async () =>
+    assert.equal(
+      (await db.query("select id from nativa_products where id='caju'")).rows
+        .length,
+      0,
+    ),
+  );
+  await db.exec("update nativa_products set active=true where id='caju'");
 });

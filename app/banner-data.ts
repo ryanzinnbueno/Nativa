@@ -1,5 +1,6 @@
 export type Banner = {
   id: string;
+  image_only?: boolean;
   category: string;
   tag: string;
   title: string;

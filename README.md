@@ -27,8 +27,9 @@ O projeto Nativa ztgmikmwpkhozrrfmuju já recebeu as tabelas e o catálogo desta
 3. supabase/migrations/202610070002_catalog_banners.sql
 4. supabase/migrations/202610070003_categories_offers.sql
 5. supabase/migrations/202610070004_image_storage.sql
+6. supabase/migrations/202610070005_trash_image_banners.sql
 
-**Atualização da instalação Nativa existente:** aplique as migrações 003 e 004 uma vez, antes de publicar esta versão. A 003 preserva as categorias existentes, permite renomeá-las junto com os produtos e banners e adiciona preços promocionais. A 004 cria o armazenamento público nativa-images para fotos da loja, com envio somente por administradores autorizados. Não altera pedidos antigos.
+**Atualização da instalação Nativa existente:** aplique as migrações ainda não executadas (003, 004 e 005), uma vez cada, antes de publicar esta versão. A 003 preserva as categorias existentes, permite renomeá-las junto com os produtos e banners e adiciona preços promocionais. A 004 cria o armazenamento público nativa-images para fotos da loja, com envio somente por administradores autorizados. Não altera pedidos antigos.
 
 As tabelas nativa_* têm RLS habilitado. Visitantes leem apenas catálogo, banners visíveis e contato comercial. A função nativa_place_order valida o pedido, busca preços no banco e grava cliente e pedido em uma transação. Evita pedidos duplicados em tentativas repetidas e limita a seis pedidos por telefone a cada 15 minutos. Pedidos e clientes só podem ser lidos por administradores autorizados.
 
@@ -38,7 +39,9 @@ Em **Categorias**, crie e renomeie categorias e escolha sua ordem. Elas aparecem
 
 Em produtos e banners, envie fotos JPG, PNG ou WebP de até 4 MB, escolha uma foto já disponível ou informe um endereço HTTPS. As fotos enviadas são convertidas para WebP, reduzidas para até 1920 pixels e publicadas no armazenamento da loja; não envie documentos ou fotos privadas. O produto ou banner só muda ao salvar. Cancelar após o envio deixa a foto armazenada, sem modificar o cadastro.
 
-Em **Banners**, edite mensagens, imagem, categoria do botão, ordem e visibilidade. Controle também o tempo entre banners (3–20 segundos) e a passagem automática. As preferências de movimento do visitante são respeitadas.
+A migração 005 adiciona a Lixeira e o formato de banner em imagem. Ao excluir, pedidos saem das listas, totais e relatórios; produtos saem da loja e não podem ser pedidos. Administradores podem recuperar os itens na Lixeira. Produtos recuperados ficam ocultos até marcar Mostrar na loja. Não há exclusão permanente nem remoção de clientes.
+
+Em **Banners**, escolha Imagem, título e botão ou Somente imagem e botão. O segundo formato não exige título nem descrição. Os banners ficaram menores, e as mensagens secundárias foram retiradas da vitrine. Edite mensagens, imagem, categoria do botão, ordem e visibilidade. Controle também o tempo entre banners (3–20 segundos) e a passagem automática. As preferências de movimento do visitante são respeitadas.
 
 Em **Relatórios**, escolha período e situação e baixe um PDF com clientes, valores, canais e entrega. A soma exclui cancelados e representa pedidos, não pagamentos recebidos. O relatório consulta o período completo, até 5.000 pedidos; acima disso, pede um período menor para não gerar um resultado incompleto. Dados de clientes ficam no arquivo baixado, portanto compartilhe apenas com pessoas autorizadas.
 

@@ -34,6 +34,7 @@ export async function GET(request: Request) {
         .select(
           "id,total,status,channel,delivery,payment,created,nativa_customers(name,phone)",
         )
+        .is("deleted_at", null)
         .gte("created", start + "T00:00:00-03:00")
         .lt("created", until.toISOString())
         .order("created", { ascending: false })

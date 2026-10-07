@@ -12,7 +12,12 @@ export async function GET() {
     if (!client)
       return reply({ error: "Entre com uma conta autorizada." }, 401);
     const [products, banners, settings, categories] = await Promise.all([
-      client.from("nativa_products").select("*").order("position").order("id"),
+      client
+        .from("nativa_products")
+        .select("*")
+        .is("deleted_at", null)
+        .order("position")
+        .order("id"),
       client.from("nativa_banners").select("*").order("position").order("id"),
       client
         .from("nativa_settings")
@@ -79,9 +84,14 @@ async function save(request: Request, insert: boolean) {
         400,
       );
     }
+    const updateQuery = client.from(table).update(data).eq("id", data.id);
     const result = insert
       ? await client.from(table).insert(data).select("id")
-      : await client.from(table).update(data).eq("id", data.id).select("id");
+      : await (
+          table === "nativa_products"
+            ? updateQuery.is("deleted_at", null)
+            : updateQuery
+        ).select("id");
     if (result.error?.code === "23505")
       return reply(
         {

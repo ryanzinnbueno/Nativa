@@ -19,6 +19,7 @@ export async function GET(request: Request) {
         client
           .from("nativa_orders")
           .select("*")
+          .is("deleted_at", null)
           .order("created", { ascending: false })
           .limit(500),
         client
@@ -44,6 +45,7 @@ export async function GET(request: Request) {
           "id,name,subtitle,category,weight,price,sale_price,tag,image,description,ingredients",
         )
         .eq("active", true)
+        .is("deleted_at", null)
         .order("position"),
       client
         .from("nativa_settings")
@@ -134,6 +136,7 @@ export async function PATCH(request: Request) {
       result = await client
         .from("nativa_orders")
         .update({ status: b.status })
+        .is("deleted_at", null)
         .eq("id", b.id)
         .select("id");
     } else if (

@@ -6,6 +6,7 @@ export type ImageFrame = {
   zoom: number;
   x: number;
   y: number;
+  show_text?: boolean;
 };
 export type BannerImageSettings = {
   desktop: ImageFrame;

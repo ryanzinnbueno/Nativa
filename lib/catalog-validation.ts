@@ -77,6 +77,10 @@ export function validateBanner(b: Record<string, unknown>) {
   if (b.image_only !== undefined && typeof b.image_only !== "boolean")
     throw new Error("Escolha o formato do banner.");
   const image_only = b.image_only === true;
+  const image_settings =
+    b.image_settings !== undefined
+      ? validateImageSettings(b.image_settings)
+      : undefined;
   return {
     ...base(b),
     category: text(b.category, 60, true),
@@ -84,10 +88,13 @@ export function validateBanner(b: Record<string, unknown>) {
     title: text(b.title, 100),
     accent: text(b.accent, 100),
     image_only,
-    ...(b.image_settings !== undefined
-      ? { image_settings: validateImageSettings(b.image_settings) }
-      : {}),
-    heading: text(b.heading, 40, !image_only),
+    ...(image_settings !== undefined ? { image_settings } : {}),
+    heading: text(
+      b.heading,
+      40,
+      (image_settings?.desktop.show_text ?? !image_only) ||
+        (image_settings?.mobile.show_text ?? !image_only),
+    ),
     heading_accent: text(b.heading_accent, 40),
     description: text(b.description, 250),
     cta: text(b.cta, 60, true),
@@ -105,6 +112,8 @@ function validateImageSettings(value: unknown) {
     if (!value || typeof value !== "object" || Array.isArray(value))
       throw new Error("Confira o enquadramento da imagem.");
     const f = value as Record<string, unknown>;
+    if (f.show_text !== undefined && typeof f.show_text !== "boolean")
+      throw new Error("Escolha o formato para cada tela.");
     if (
       !["contain", "cover"].includes(f.fit as string) ||
       !Number.isInteger(f.zoom) ||
@@ -123,6 +132,9 @@ function validateImageSettings(value: unknown) {
       zoom: f.zoom as number,
       x: f.x as number,
       y: f.y as number,
+      ...(f.show_text !== undefined
+        ? { show_text: f.show_text as boolean }
+        : {}),
     };
   };
   return {

@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, Pause, Play } from "lucide-react";
 
 import { type Banner } from "./banner-data";
 import { BannerImage } from "./banner-image";
+import { bannerShowsText, bannerNeedsText } from "../lib/banner-presentation";
 
 export default function HeroCarousel({
   onExplore,
@@ -93,7 +94,7 @@ export default function HeroCarousel({
       }}
     >
       <div
-        className={`nativa-banner nativa-banner-${current}${slide.image_only ? " banner-image-only" : ""}`}
+        className={`nativa-banner nativa-banner-${current}${!bannerShowsText(slide, "desktop") ? " banner-image-only banner-desktop-image-only" : ""}${bannerShowsText(slide, "mobile") ? " banner-mobile-text" : " banner-mobile-image-only"}`}
         key={slide.id}
         role="group"
         aria-roledescription="slide"
@@ -101,7 +102,7 @@ export default function HeroCarousel({
       >
         <BannerImage banner={slide} priority={current === 0} />
         <div className="banner-message">
-          {!slide.image_only && (
+          {bannerNeedsText(slide) && (
             <>
               <h1>
                 {slide.heading} <span>{slide.heading_accent}</span>

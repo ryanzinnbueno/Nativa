@@ -13,6 +13,7 @@ import { type Category } from "./category-data";
 import { ImageUpload } from "./image-upload";
 import { BannerImageEditor } from "./banner-image-editor";
 import { imageFrame } from "./banner-image";
+import { bannerNeedsText } from "../lib/banner-presentation";
 import { TrashAction } from "./trash-panel";
 import { sellingPrice } from "../lib/pricing";
 type Product = (typeof examples)[number] & {
@@ -302,22 +303,11 @@ export function CatalogPanel({
                 </>
               ) : (
                 <>
-                  <label>
-                    Formato do banner
-                    <select
-                      value={(item as Banner).image_only ? "image" : "text"}
-                      onChange={(e) =>
-                        setItem({
-                          ...item,
-                          image_only: e.target.value === "image",
-                        } as Banner)
-                      }
-                    >
-                      <option value="text">Imagem, título e botão</option>
-                      <option value="image">Somente imagem e botão</option>
-                    </select>
-                  </label>
-                  {!(item as Banner).image_only && (
+                  <p>
+                    Em Apresentação por tela, escolha como este banner aparece
+                    no celular e no computador.
+                  </p>
+                  {bannerNeedsText(item as Banner) && (
                     <>
                       {field("heading", "Título", true, 40)}
                       {field(
@@ -354,7 +344,7 @@ export function CatalogPanel({
                 </select>
                 <small>Crie novas opções na aba Categorias.</small>
               </label>
-              {(kind === "product" || !(item as Banner).image_only) && (
+              {(kind === "product" || bannerNeedsText(item as Banner)) && (
                 <label>
                   Descrição
                   <textarea

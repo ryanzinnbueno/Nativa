@@ -153,3 +153,62 @@ test("banner framing accepts independent screens and rejects invalid dimensions 
     }),
   );
 });
+
+test("banner text can be shown on only one screen and keeps the original default", () => {
+  const b = {
+    id: "responsive",
+    active: true,
+    position: 0,
+    category: "Castanhas",
+    tag: "",
+    title: "",
+    accent: "",
+    image_only: false,
+    heading: "Produtos a granel",
+    heading_accent: "",
+    description: "Escolha seus favoritos",
+    cta: "Ver",
+    alt: "Castanhas",
+    image: "/images/caju.jpg",
+  };
+  const f = { fit: "cover", zoom: 100, x: 50, y: 50 };
+  const settings = {
+    desktop: { ...f, show_text: true },
+    mobile: { ...f, show_text: false },
+  };
+  assert.deepEqual(
+    validateBanner({ ...b, image_settings: settings }).image_settings,
+    settings,
+  );
+  assert.throws(() =>
+    validateBanner({ ...b, heading: "", image_settings: settings }),
+  );
+  assert.throws(() =>
+    validateBanner({
+      ...b,
+      image_settings: { desktop: f, mobile: { ...f, show_text: "false" } },
+    }),
+  );
+  assert.equal(
+    validateBanner({
+      ...b,
+      heading: "",
+      image_settings: {
+        desktop: { ...f, show_text: false },
+        mobile: { ...f, show_text: false },
+      },
+    }).heading,
+    "",
+  );
+  assert.throws(() =>
+    validateBanner({
+      ...b,
+      image_only: true,
+      heading: "",
+      image_settings: {
+        desktop: { ...f, show_text: false },
+        mobile: { ...f, show_text: true },
+      },
+    }),
+  );
+});

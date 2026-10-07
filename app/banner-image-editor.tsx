@@ -3,6 +3,7 @@ import { useState } from "react";
 import type { Banner } from "./banner-data";
 import { BannerImage, imageFrame, type ImageFrame } from "./banner-image";
 import { ImageUpload } from "./image-upload";
+import { bannerShowsText } from "../lib/banner-presentation";
 
 export function BannerImageEditor({
   banner,
@@ -46,10 +47,11 @@ export function BannerImageEditor({
       className="banner-adjustments"
       aria-label="Ajustar imagem do banner"
     >
-      <h3>Ajustar imagem</h3>
+      <h3>Apresentação por tela</h3>
       <p>
-        Escolha o enquadramento para cada tela. As alterações aparecem abaixo e
-        serão usadas na loja ao salvar.
+        Escolha o formato e o enquadramento para cada tela. Você pode mostrar os
+        textos no computador e usar somente a imagem com botão no celular. Salve
+        para aplicar na loja.
       </p>
       <div
         className="banner-device-tabs"
@@ -71,6 +73,16 @@ export function BannerImageEditor({
           Computador
         </button>
       </div>
+      <label>
+        Formato no {device === "mobile" ? "celular" : "computador"}
+        <select
+          value={bannerShowsText(banner, device) ? "text" : "image"}
+          onChange={(e) => update({ show_text: e.target.value === "text" })}
+        >
+          <option value="text">Imagem, título e botão</option>
+          <option value="image">Somente imagem e botão</option>
+        </select>
+      </label>
       <div className={`banner-frame-preview preview-${device}`}>
         <BannerImage
           banner={{
@@ -79,7 +91,7 @@ export function BannerImageEditor({
           }}
         />
         <div className="preview-banner-content">
-          {!banner.image_only && (
+          {bannerShowsText(banner, device) && (
             <>
               <strong>
                 {banner.heading} {banner.heading_accent}
@@ -128,7 +140,7 @@ export function BannerImageEditor({
         className="secondary"
         onClick={() =>
           update({
-            fit: banner.image_only ? "contain" : "cover",
+            fit: bannerShowsText(banner, device) ? "cover" : "contain",
             zoom: 100,
             x: 50,
             y: 50,

@@ -9,7 +9,10 @@ export async function GET(request: Request) {
       const client = await adminClient();
       if (!client)
         return reply(
-          { error: "Entre com uma conta autorizada para acessar o CRM." },
+          {
+            error:
+              "Entre com uma conta autorizada para acessar a área da Nativa.",
+          },
           401,
         );
       const [orders, customers, settings] = await Promise.all([
@@ -34,7 +37,7 @@ export async function GET(request: Request) {
       });
     }
     const client = await createClient();
-    const [catalog, settings] = await Promise.all([
+    const [catalog, settings, banners] = await Promise.all([
       client
         .from("nativa_products")
         .select(
@@ -42,16 +45,30 @@ export async function GET(request: Request) {
         )
         .eq("active", true)
         .order("position"),
-      client.from("nativa_settings").select("phone").eq("id", 1).single(),
+      client
+        .from("nativa_settings")
+        .select("phone,banner_seconds,banner_autoplay")
+        .eq("id", 1)
+        .single(),
+      client
+        .from("nativa_banners")
+        .select("*")
+        .eq("active", true)
+        .order("position")
+        .order("id"),
     ]);
-    if (catalog.error || settings.error)
+    if (catalog.error || settings.error || banners.error)
       throw new Error("Database read failed");
-    return reply({ products: catalog.data, phone: settings.data.phone });
+    return reply({
+      products: catalog.data,
+      banners: banners.data,
+      ...settings.data,
+    });
   } catch {
     return reply(
       {
         error:
-          "A loja ainda não conseguiu se conectar ao banco de dados. Tente novamente em instantes.",
+          "Não foi possível carregar a loja. Tente novamente em instantes.",
       },
       503,
     );
@@ -95,7 +112,10 @@ export async function PATCH(request: Request) {
     const client = await adminClient();
     if (!client)
       return reply(
-        { error: "Entre com uma conta autorizada para acessar o CRM." },
+        {
+          error:
+            "Entre com uma conta autorizada para acessar a área da Nativa.",
+        },
         401,
       );
     const b = await request.json();
@@ -120,6 +140,21 @@ export async function PATCH(request: Request) {
         .from("nativa_customers")
         .update({ notes: b.notes })
         .eq("id", b.id)
+        .select("id");
+    } else if (
+      b.type === "banner-settings" &&
+      Number.isInteger(b.banner_seconds) &&
+      b.banner_seconds >= 3 &&
+      b.banner_seconds <= 20 &&
+      typeof b.banner_autoplay === "boolean"
+    ) {
+      result = await client
+        .from("nativa_settings")
+        .update({
+          banner_seconds: b.banner_seconds,
+          banner_autoplay: b.banner_autoplay,
+        })
+        .eq("id", 1)
         .select("id");
     } else if (b.type === "settings" && typeof b.phone === "string") {
       const phone = b.phone.replace(/\D/g, "");

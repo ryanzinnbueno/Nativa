@@ -1,5 +1,7 @@
 "use client";
 import HeroCarousel from "./hero-carousel";
+import { defaultBanners, type Banner } from "./banner-data";
+import { CatalogPanel, ReportsPanel } from "./admin-panels";
 import { useEffect, useState, useRef, useCallback, FormEvent } from "react";
 import {
   Leaf,
@@ -61,7 +63,7 @@ type Order = {
   notes: string;
   created: string;
 };
-const categories = [
+const baseCategories = [
   { name: "Todos", icon: Leaf },
   { name: "Castanhas", icon: Nut },
   { name: "Grãos e cereais", icon: Wheat },
@@ -80,6 +82,9 @@ type StoreData = {
   orders: Order[];
   customers: Customer[];
   phone: string;
+  banners?: Banner[];
+  banner_seconds?: number;
+  banner_autoplay?: boolean;
 };
 type OrderResult = { id: string; total: number; items: Order["items"] };
 async function api<T = StoreData>(
@@ -227,6 +232,16 @@ export default function Nativa() {
     [admin, setAdmin] = useState(false),
     [loginError, setLoginError] = useState(""),
     [loginBusy, setLoginBusy] = useState(false);
+  const [banners, setBanners] = useState(defaultBanners);
+  const [bannerSeconds, setBannerSeconds] = useState(7);
+  const [bannerAutoplay, setBannerAutoplay] = useState(true);
+  const [storeError, setStoreError] = useState("");
+  const categories = [
+    ...baseCategories,
+    ...Array.from(new Set(products.map((p) => p.category)))
+      .filter((c) => !baseCategories.some((b) => b.name === c))
+      .map((name) => ({ name, icon: Leaf })),
+  ];
   const requestKey = useRef("");
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
@@ -287,33 +302,71 @@ export default function Nativa() {
   const loadStore = useCallback(async () => {
     try {
       const d = await api();
+      setStoreError("");
       setProducts(d.products);
+      if (d.banners) setBanners(d.banners);
+      setBannerSeconds(d.banner_seconds ?? 7);
+      setBannerAutoplay(d.banner_autoplay ?? true);
       setCart((c) => c.filter((i) => d.products.some((p) => p.id === i.id)));
       setPhone(d.phone);
       setPhoneDraft(d.phone);
     } catch {
-      /* Keep the catalog preview; checkout reports connection errors. */
+      setStoreError("Não foi possível atualizar a loja. Tente novamente.");
     }
   }, []);
-  // Restore the cart from external session storage once, before persisting changes.
+  // Validate persisted IDs against the current catalog, including newly registered items.
   useEffect(() => {
-    let draft: CartItem[] = [];
-    try {
-      const value = JSON.parse(sessionStorage.getItem("nativa-sacola") || "[]");
-      if (Array.isArray(value))
-        draft = value.filter(
-          (i) =>
-            demoProducts.some((p) => p.id === i.id) &&
-            Number.isInteger(i.qty) &&
-            i.qty > 0 &&
-            i.qty <= 99,
+    let cancelled = false;
+    const restore = async () => {
+      let available = demoProducts;
+      try {
+        const d = await api();
+        if (cancelled) return;
+        available = d.products;
+        setProducts(d.products);
+        if (d.banners) setBanners(d.banners);
+        setBannerSeconds(d.banner_seconds ?? 7);
+        setBannerAutoplay(d.banner_autoplay ?? true);
+        setPhone(d.phone);
+        setPhoneDraft(d.phone);
+      } catch {
+        if (!cancelled)
+          setStoreError(
+            "Não foi possível carregar os produtos. Seu carrinho foi preservado. Tente novamente.",
+          );
+        return;
+      }
+      if (cancelled) return;
+      let draft: CartItem[] = [];
+      try {
+        const value = JSON.parse(
+          sessionStorage.getItem("nativa-sacola") || "[]",
         );
-    } catch {}
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- Restore external persisted state on mount.
-    setCart(draft);
-    setCartReady(true);
-    void loadStore();
-  }, [loadStore]);
+        const seen = new Set<string>();
+        if (Array.isArray(value))
+          draft = value.filter((i) => {
+            if (
+              !i ||
+              typeof i.id !== "string" ||
+              seen.has(i.id) ||
+              !available.some((p) => p.id === i.id) ||
+              !Number.isInteger(i.qty) ||
+              i.qty < 1 ||
+              i.qty > 99
+            )
+              return false;
+            seen.add(i.id);
+            return true;
+          });
+      } catch {}
+      setCart(draft);
+      setCartReady(true);
+    };
+    void restore();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   useEffect(() => {
     if (cartReady) {
       try {
@@ -322,6 +375,7 @@ export default function Nativa() {
     }
   }, [cart, cartReady]);
   const add = (p: Product) => {
+    if (!cartReady) return;
     setCart((c) =>
       c.find((i) => i.id === p.id)
         ? c.map((i) =>
@@ -339,7 +393,7 @@ export default function Nativa() {
     );
   const count = cart.reduce((s, i) => s + i.qty, 0),
     total = cart.reduce(
-      (s, i) => s + products.find((p) => p.id === i.id)!.price * i.qty,
+      (s, i) => s + (products.find((p) => p.id === i.id)?.price || 0) * i.qty,
       0,
     );
   const filtered = products
@@ -400,7 +454,7 @@ export default function Nativa() {
         ) || "Site";
     if (channel === "WhatsApp" && !phone) {
       setSubmitError(
-        "Configure o WhatsApp da loja no CRM antes de usar esta opção.",
+        "O atendimento por WhatsApp não está disponível. Finalize seu pedido pelo site.",
       );
       return;
     }
@@ -501,45 +555,6 @@ export default function Nativa() {
         .toLowerCase()
         .includes(crmSearch.toLowerCase()),
   );
-  const exportCSV = () => {
-    const esc = (s: unknown) =>
-      '"' +
-      String(s ?? "")
-        .replace(/^[=+@-]/, "'")
-        .replace(/"/g, '""') +
-      '"';
-    const rows = [
-      [
-        "Pedido",
-        "Cliente",
-        "Telefone",
-        "Total (R$)",
-        "Status",
-        "Canal",
-        "Data",
-      ],
-      ...orders.map((o) => [
-        o.id,
-        customerFor(o)?.name,
-        customerFor(o)?.phone,
-        (o.total / 100).toFixed(2),
-        o.status,
-        o.channel,
-        o.created,
-      ]),
-    ];
-    const url = URL.createObjectURL(
-      new Blob(
-        ["\ufeff" + rows.map((r) => r.map(esc).join(";")).join("\r\n")],
-        { type: "text/csv;charset=utf-8" },
-      ),
-    );
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "nativa-pedidos.csv";
-    a.click();
-    URL.revokeObjectURL(url);
-  };
 
   return (
     <>
@@ -597,7 +612,7 @@ export default function Nativa() {
               onClick={() => setCartOpen(true)}
               aria-label={`Abrir sacola com ${count} itens`}
             >
-              <ShoppingBag size={20} />
+              <ShoppingCart size={20} />
               <span className="bag-text">Sacola</span>
               <span className="bag-count">{count}</span>
             </button>
@@ -615,13 +630,16 @@ export default function Nativa() {
           <nav className="menu-panel">
             <button onClick={shop}>Nossa loja</button>
             <button onClick={about}>Sobre nós</button>
-            <button onClick={openCRM}>Área da Nativa • CRM</button>
+            <button onClick={openCRM}>Área da Nativa</button>
           </nav>
         )}
       </header>
       {view === "loja" ? (
         <main>
           <HeroCarousel
+            slides={banners}
+            seconds={bannerSeconds}
+            autoplay={bannerAutoplay}
             onExplore={(c) => {
               setCategory(c);
               setSearch("");
@@ -631,6 +649,14 @@ export default function Nativa() {
                 ?.scrollIntoView({ behavior: "smooth" });
             }}
           />
+          {storeError && (
+            <div className="error section" role="alert">
+              {storeError}{" "}
+              <button onClick={() => window.location.reload()}>
+                Tentar novamente
+              </button>
+            </div>
+          )}
           <div className="benefits">
             <div>
               <Leaf />
@@ -767,7 +793,7 @@ export default function Nativa() {
             <div className="results-row">
               <span>
                 {filtered.length} produtos{favoriteOnly ? " favoritos" : ""}{" "}
-                <small>• catálogo de exemplo</small>
+                <small>• escolha seus favoritos</small>
                 {favoriteOnly && (
                   <button
                     className="text-button"
@@ -841,6 +867,7 @@ export default function Nativa() {
                       </div>
                       <button
                         className="add"
+                        disabled={!cartReady}
                         onClick={() => add(p)}
                         aria-label={`Adicionar ${p.name} à sacola`}
                       >
@@ -912,7 +939,7 @@ export default function Nativa() {
                 @nativabemviver <ArrowUpRight size={17} />
               </a>
               <small className="draft-note">
-                Texto de apresentação sugerido para esta primeira versão.
+                Escolhas naturais para acompanhar seu dia.
               </small>
             </div>
           </section>
@@ -998,6 +1025,9 @@ export default function Nativa() {
               { id: "overview", label: "Visão geral", icon: LayoutDashboard },
               { id: "orders", label: "Pedidos", icon: Package },
               { id: "customers", label: "Clientes", icon: Users },
+              { id: "products", label: "Produtos", icon: Package },
+              { id: "banners", label: "Banners", icon: SlidersHorizontal },
+              { id: "reports", label: "Relatórios", icon: Download },
               { id: "settings", label: "Configurações", icon: Settings },
             ].map((t) => (
               <button
@@ -1031,7 +1061,13 @@ export default function Nativa() {
                       ? "PEDIDOS"
                       : tab === "customers"
                         ? "CLIENTES"
-                        : "CONFIGURAÇÕES"}
+                        : tab === "products"
+                          ? "PRODUTOS"
+                          : tab === "banners"
+                            ? "BANNERS"
+                            : tab === "reports"
+                              ? "RELATÓRIOS"
+                              : "CONFIGURAÇÕES"}
                 </span>
                 <h1>
                   {tab === "overview"
@@ -1040,7 +1076,13 @@ export default function Nativa() {
                       ? "Cada pedido, um cuidado."
                       : tab === "customers"
                         ? "Gente que faz parte."
-                        : "Do seu jeito."}
+                        : tab === "products"
+                          ? "Sua seleção natural."
+                          : tab === "banners"
+                            ? "Uma vitrine com a sua cara."
+                            : tab === "reports"
+                              ? "Um olhar sobre os pedidos."
+                              : "Do seu jeito."}
                 </h1>
                 <p>
                   {tab === "overview"
@@ -1067,6 +1109,9 @@ export default function Nativa() {
                 ["overview", "Visão geral"],
                 ["orders", "Pedidos"],
                 ["customers", "Clientes"],
+                ["products", "Produtos"],
+                ["banners", "Banners"],
+                ["reports", "Relatórios"],
                 ["settings", "Ajustes"],
               ].map(([id, label]) => (
                 <button
@@ -1168,12 +1213,12 @@ export default function Nativa() {
                     <ShoppingBasket size={35} />
                     <h3>Sua história começa no primeiro pedido.</h3>
                     <p>
-                      Monte uma sacola na loja e finalize um pedido de teste.
+                      Os pedidos feitos pelos clientes vão aparecer aqui.
                       <br />
-                      Ele aparece aqui, junto com o cadastro do cliente.
+                      Você poderá acompanhar cada etapa e falar com o cliente.
                     </p>
                     <button className="primary" onClick={shop}>
-                      Fazer meu primeiro teste
+                      Conhecer a loja
                     </button>
                   </div>
                 )}
@@ -1219,11 +1264,10 @@ export default function Nativa() {
                   </select>
                   <button
                     className="secondary"
-                    disabled={!orders.length}
-                    onClick={exportCSV}
+                    onClick={() => setTab("reports")}
                   >
                     <Download size={16} />
-                    Exportar
+                    Relatório em PDF
                   </button>
                 </div>
                 <div className="pipeline">
@@ -1347,6 +1391,16 @@ export default function Nativa() {
                 )}
               </>
             )}
+            {(tab === "products" || tab === "banners") && (
+              <CatalogPanel
+                key={tab}
+                kind={tab === "products" ? "product" : "banner"}
+                onSaved={() => {
+                  void loadStore();
+                }}
+              />
+            )}
+            {tab === "reports" && <ReportsPanel />}
             {tab === "settings" && (
               <div className="settings-card">
                 <MessageCircle size={30} />
@@ -1383,9 +1437,9 @@ export default function Nativa() {
                   <ShieldCheck size={19} />
                   <p>
                     A loja recebe pedidos sem exigir conta do cliente. Apenas
-                    administradores autorizados acessam o CRM. O catálogo é
-                    ilustrativo; pagamento, estoque e frete devem ser
-                    confirmados pela loja.
+                    pessoas autorizadas acessam esta área. Os pedidos são
+                    recebidos para confirmação; pagamento, disponibilidade e
+                    entrega devem ser confirmados pela loja.
                   </p>
                 </div>
               </div>
@@ -1412,7 +1466,7 @@ export default function Nativa() {
         </div>
         <div className="footer-bottom">
           <span>© 2026 Nativa Bem Viver</span>
-          <span>MVP • produtos, imagens e preços ilustrativos</span>
+          <span>Confirme valores e disponibilidade com a loja.</span>
         </div>
         <div className="image-credits">
           Foto de seleção:{" "}
@@ -1457,12 +1511,31 @@ export default function Nativa() {
           </button>
           <button onClick={() => setCartOpen(true)}>
             <span className="mobile-bag">
-              <ShoppingBag size={20} />
+              <ShoppingCart size={20} />
               {count > 0 && <b>{count}</b>}
             </span>
             <span>Sacola</span>
           </button>
         </nav>
+      )}
+      {view === "loja" && count > 0 && !cartOpen && !checkout && !selected && (
+        <button
+          className="floating-cart"
+          onClick={() => setCartOpen(true)}
+          aria-label={`Abrir carrinho com ${count} itens, ${money(total)}`}
+        >
+          <span className="floating-cart-icon">
+            <ShoppingCart size={23} />
+            <b key={count}>{count}</b>
+          </span>
+          <span>
+            <strong>Ver carrinho</strong>
+            <small>
+              {count} {count === 1 ? "item" : "itens"} · {money(total)}
+            </small>
+          </span>
+          <ChevronRight size={18} />
+        </button>
       )}
       {toast && (
         <div className="toast" role="status">
@@ -1486,7 +1559,11 @@ export default function Nativa() {
                 {selected.weight} • {selected.subtitle}
               </span>
               <strong>{money(selected.price)}</strong>
-              <button className="primary" onClick={() => add(selected)}>
+              <button
+                className="primary"
+                disabled={!cartReady}
+                onClick={() => add(selected)}
+              >
                 <ShoppingCart size={18} aria-hidden="true" />
                 Adicionar à sacola
               </button>
@@ -1494,8 +1571,8 @@ export default function Nativa() {
                 <summary>Ingredientes e informações</summary>
                 <p>{selected.ingredients}</p>
                 <small>
-                  Informações ilustrativas. Confirme o rótulo e a
-                  disponibilidade com a loja.
+                  Confira os ingredientes no rótulo e a disponibilidade com a
+                  loja.
                 </small>
               </details>
             </div>
@@ -1507,7 +1584,8 @@ export default function Nativa() {
           <div className="cart-content">
             {cart.length ? (
               cart.map((i) => {
-                const p = products.find((p) => p.id === i.id)!;
+                const p = products.find((p) => p.id === i.id);
+                if (!p) return null;
                 return (
                   <div className="cart-row" key={i.id}>
                     <img src={p.image} alt="" />
@@ -1597,7 +1675,7 @@ export default function Nativa() {
               <p>
                 {success.channel === "WhatsApp"
                   ? "Continue no WhatsApp para enviar sua mensagem à loja."
-                  : "Seu pedido está no CRM da Nativa, aguardando confirmação."}
+                  : "Recebemos seu pedido! A Nativa vai confirmar os próximos passos com você."}
               </p>
               <small>
                 Nenhum pagamento foi cobrado. Entrega e disponibilidade a
@@ -1622,7 +1700,7 @@ export default function Nativa() {
                     openCRM();
                   }}
                 >
-                  Ver pedido no CRM
+                  Acompanhar pedido
                 </button>
               )}
               <button
@@ -1722,7 +1800,7 @@ export default function Nativa() {
                 />
               </label>
               <small>
-                Pedido de teste, sem cobrança. Entrega, pagamento e
+                Nenhum pagamento é cobrado nesta etapa. Entrega, pagamento e
                 disponibilidade serão confirmados pela loja.
               </small>
               {submitError && (
@@ -1749,7 +1827,7 @@ export default function Nativa() {
               </button>
               {!phone && (
                 <small className="center">
-                  WhatsApp aguardando configuração na Área da Nativa.
+                  Para falar com a Nativa, finalize seu pedido pelo site.
                 </small>
               )}
             </form>

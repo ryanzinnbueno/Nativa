@@ -6,7 +6,7 @@ Execute cada comando em uma linha separada, dentro da pasta do projeto:
 
 ```cmd
 git status
-git add app lib/supabase supabase tests package.json package-lock.json netlify.toml proxy.ts tsconfig.json eslint.config.mjs .gitignore .env.example README.md LEIA-ME.md GUIA-GITHUB.md
+git add app lib supabase tests package.json package-lock.json netlify.toml proxy.ts tsconfig.json eslint.config.mjs .gitignore .env.example README.md LEIA-ME.md GUIA-GITHUB.md AGENTS.md CLAUDE.md
 git commit -m "Atualiza Nativa"
 git push origin main
 ```

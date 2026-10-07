@@ -1,6 +1,6 @@
 # Nativa Bem Viver
 
-Loja mobile com banners de grãos, castanhas e chás, categorias, pesquisa, favoritos, sacola e pedidos pelo site ou WhatsApp. CRM com login para pedidos, clientes, notas, exportação CSV e configuração de WhatsApp.
+Loja mobile com banners de grãos, castanhas e chás, categorias, pesquisa, favoritos, carrinho com quantidade e total e pedidos pelo site ou WhatsApp. Área administrativa com login para pedidos, clientes, notas, cadastro e edição de produtos, controle de banners, relatórios em PDF e configuração de WhatsApp.
 
 Esta versão usa **Next.js 16 + Supabase**, preparada para **Netlify**. Substitui Sites/Vinext/Cloudflare D1. Produtos e preços são demonstrativos. Não cobra pagamentos, reserva estoque nem calcula frete.
 
@@ -24,10 +24,17 @@ O projeto Nativa ztgmikmwpkhozrrfmuju já recebeu as tabelas e o catálogo desta
 
 1. supabase/migrations/202610070001_nativa.sql
 2. supabase/seed.sql
+3. supabase/migrations/202610070002_catalog_banners.sql
 
-As cinco tabelas nativa_* têm RLS habilitado. Visitantes leem apenas catálogo e contato comercial. A função nativa_place_order valida o pedido, busca preços no banco e grava cliente e pedido em uma transação. Evita pedidos duplicados em tentativas repetidas e limita a seis pedidos por telefone a cada 15 minutos. Pedidos e clientes só podem ser lidos por administradores autorizados.
+**Atualização de uma instalação existente:** execute apenas `202610070002_catalog_banners.sql`, uma vez. Ela cria a tabela de banners com as três mensagens atuais, permite cadastro de produtos somente para administradores autorizados e adiciona tempo/passagem automática dos banners. Não altera clientes nem pedidos.
 
-No Table Editor, ajuste produtos em nativa_products. price é em centavos: 2290 corresponde a R$ 22,90. active=false retira o produto da loja; position ordena a exibição. Os preços de pedidos anteriores ficam preservados no próprio pedido.
+As tabelas nativa_* têm RLS habilitado. Visitantes leem apenas catálogo, banners visíveis e contato comercial. A função nativa_place_order valida o pedido, busca preços no banco e grava cliente e pedido em uma transação. Evita pedidos duplicados em tentativas repetidas e limita a seis pedidos por telefone a cada 15 minutos. Pedidos e clientes só podem ser lidos por administradores autorizados.
+
+Em **Área da Nativa → Produtos**, cadastre ou edite nome, categoria, preço em reais, peso, foto, descrição, ingredientes, ordem e visibilidade. Ocultar preserva o item e os pedidos anteriores. Imagens podem ser escolhidas entre as fotos da loja ou por endereço HTTPS; esta versão não envia arquivos de imagem.
+
+Em **Banners**, edite mensagens, imagem, categoria do botão, ordem e visibilidade. Controle também o tempo entre banners (3–20 segundos) e a passagem automática. As preferências de movimento do visitante são respeitadas.
+
+Em **Relatórios**, escolha período e situação e baixe um PDF com clientes, valores, canais e entrega. A soma exclui cancelados e representa pedidos, não pagamentos recebidos. O relatório consulta o período completo, até 5.000 pedidos; acima disso, pede um período menor para não gerar um resultado incompleto. Dados de clientes ficam no arquivo baixado, portanto compartilhe apenas com pessoas autorizadas.
 
 ## Primeiro administrador
 
@@ -70,9 +77,9 @@ npm run typecheck
 npm run build
 ```
 
-Os seis testes usam PostgreSQL em memória (PGlite) e não gravam no Supabase. Cobrem acesso restrito, cálculo de preços, tentativas duplicadas, validação, permissões administrativas e limite de pedidos.
+Os testes usam PostgreSQL em memória (PGlite) e não gravam no Supabase. Cobrem acesso restrito, cálculo de preços, tentativas duplicadas, validação, cadastro administrativo, banners visíveis/ocultos, limite de pedidos, origem das requisições e paginação/totais do PDF.
 
-Na instalação Nativa foi verificado: cinco tabelas com RLS, catálogo com seis produtos acessível pela aplicação e CRM retornando 401 para visitantes. O checkout com gravação no projeto e o login administrativo ainda precisam de verificação após criar o administrador. A publicação Netlify depende de conectar o repositório.
+O site está conectado ao GitHub e publicado na Netlify. A administração exige uma conta Supabase autorizada em nativa_admins. As funções de produtos e banners dependem da segunda migração acima.
 
 ## Uso da loja
 

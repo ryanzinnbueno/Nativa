@@ -27,9 +27,91 @@ before(async () => {
     await readFile(new URL("../supabase/seed.sql", import.meta.url), "utf8"),
   );
   await db.query("insert into nativa_admins(user_id) values ($1)", [admin]);
+  await db.exec(
+    await readFile(
+      new URL(
+        "../supabase/migrations/202610070002_catalog_banners.sql",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+  );
 });
 after(async () => {
   await db?.close();
+});
+
+test("only authorized admins register products and banners; guests see active entries only", async () => {
+  const insertProduct =
+    "insert into nativa_products(id,name,subtitle,category,weight,price,tag,image,description,ingredients,active) values ('novo','Novo item','','Castanhas','100 g',1000,'','/images/caju.jpg','','',false)";
+  const insertBanner =
+    "insert into nativa_banners(id,category,heading,cta,image,alt,active,position) values ('novo-banner','Castanhas','Novo','Ver','/images/carousel-castanhas.webp','Castanhas',false,5)";
+  await as("anon", null, async () => {
+    await assert.rejects(db.exec(insertProduct));
+    await assert.rejects(db.exec(insertBanner));
+  });
+  await as("authenticated", outsider, async () => {
+    await assert.rejects(db.exec(insertProduct));
+    await assert.rejects(db.exec(insertBanner));
+    assert.equal(
+      (
+        await db.query(
+          "update nativa_settings set banner_seconds=8 returning id",
+        )
+      ).rows.length,
+      0,
+    );
+  });
+  await as("authenticated", admin, async () => {
+    await db.exec(insertProduct);
+    await db.exec(insertBanner);
+    await db.exec(
+      "update nativa_settings set banner_seconds=8,banner_autoplay=false where id=1",
+    );
+  });
+  await as("anon", null, async () => {
+    assert.equal(
+      (await db.query("select * from nativa_products where id='novo'")).rows
+        .length,
+      0,
+    );
+    assert.equal(
+      (await db.query("select * from nativa_banners where id='novo-banner'"))
+        .rows.length,
+      0,
+    );
+  });
+  await as("authenticated", outsider, async () => {
+    assert.equal(
+      (
+        await db.query(
+          "update nativa_banners set active=true where id='novo-banner' returning id",
+        )
+      ).rows.length,
+      0,
+    );
+  });
+  await as("authenticated", admin, async () => {
+    await db.exec(
+      "update nativa_products set active=true where id='novo';update nativa_banners set active=true,position=1 where id='novo-banner'",
+    );
+  });
+  await as("anon", null, async () => {
+    assert.equal(
+      (await db.query("select * from nativa_products where id='novo'")).rows
+        .length,
+      1,
+    );
+    assert.equal(
+      (await db.query("select * from nativa_banners where id='novo-banner'"))
+        .rows.length,
+      1,
+    );
+  });
+  // Isolated fixture removed as owner; application users have no deletion permission.
+  await db.exec(
+    "delete from nativa_products where id='novo';delete from nativa_banners where id='novo-banner';update nativa_settings set banner_seconds=7,banner_autoplay=true where id=1",
+  );
 });
 async function as(role, user, fn) {
   await db.query("select set_config('request.jwt.claim.sub',$1,false)", [

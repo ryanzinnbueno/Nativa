@@ -12,7 +12,7 @@ export async function GET(request: Request) {
         return reply(
           {
             error:
-              "Entre com uma conta autorizada para acessar a área da Verdeva.",
+              "Entre com uma conta autorizada para acessar a área da Villa Natura.",
           },
           401,
         );
@@ -142,7 +142,7 @@ export async function PATCH(request: Request) {
       return reply(
         {
           error:
-            "Entre com uma conta autorizada para acessar a área da Verdeva.",
+            "Entre com uma conta autorizada para acessar a área da Villa Natura.",
         },
         401,
       );

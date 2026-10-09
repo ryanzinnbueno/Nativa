@@ -455,3 +455,7 @@ html, body { max-width: 100%; overflow-x: clip; }
 .my-order-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; border-bottom: 1px solid #e6ecdf; padding: 12px 0; }
 .my-order-item > b { white-space: nowrap; }
 @media(max-width:760px) { .overlay:has(.welcome-modal) { align-items: center; } .account-welcome { padding: 24px; } .account-welcome h2 { font-size: 29px; } .my-orders { padding: 20px; } }
+.logo > span { font-size: 32px; white-space: nowrap; }
+.logo small { font-size: 8px; letter-spacing: .2em; }
+@media(max-width:760px) { .logo > span { font-size: 23px; } .logo small { font-size: 7px; letter-spacing: .13em; } }
+@media(max-width:360px) { .logo > span { font-size: 20px; } .logo > svg { width: 22px; } .logo small { font-size: 6px; } }

@@ -1,4 +1,4 @@
-# Verdeva Bem Viver
+# Villa Natura Bem Viver
 
 Loja mobile com banners de grãos, castanhas e chás, categorias, pesquisa, favoritos, carrinho com quantidade e total e pedidos pelo site ou WhatsApp. Área administrativa com login para pedidos, clientes, notas, cadastro e edição de produtos, controle de banners, relatórios em PDF e configuração de WhatsApp.
 
@@ -14,13 +14,13 @@ copy .env.example .env.local
 npm run dev
 ```
 
-Preencha .env.local com a URL e a chave **publishable** do Supabase (Project Settings → API Keys). A URL da Verdeva já está no exemplo. Abra http://localhost:3000.
+Preencha .env.local com a URL e a chave **publishable** do Supabase (Project Settings → API Keys). A URL da Villa Natura já está no exemplo. Abra http://localhost:3000.
 
 Não envie .env.local, senhas ou chaves secretas ao GitHub. Esta aplicação não precisa de service_role nem de sb_secret.
 
 ## Banco de dados
 
-O projeto Verdeva ztgmikmwpkhozrrfmuju já recebeu as tabelas e o catálogo desta versão. **Não execute novamente a migração inicial nesse projeto.** Para uma instalação em outro projeto vazio, execute no SQL Editor, nesta ordem:
+O projeto Villa Natura ztgmikmwpkhozrrfmuju já recebeu as tabelas e o catálogo desta versão. **Não execute novamente a migração inicial nesse projeto.** Para uma instalação em outro projeto vazio, execute no SQL Editor, nesta ordem:
 
 1. supabase/migrations/202610070001_nativa.sql
 2. supabase/seed.sql
@@ -29,11 +29,11 @@ O projeto Verdeva ztgmikmwpkhozrrfmuju já recebeu as tabelas e o catálogo dest
 5. supabase/migrations/202610070004_image_storage.sql
 6. supabase/migrations/202610070005_trash_image_banners.sql
 
-**Atualização da instalação Verdeva existente:** aplique as migrações ainda não executadas (003, 004 e 005), uma vez cada, antes de publicar esta versão. A 003 preserva as categorias existentes, permite renomeá-las junto com os produtos e banners e adiciona preços promocionais. A 004 cria o armazenamento público nativa-images para fotos da loja, com envio somente por administradores autorizados. Não altera pedidos antigos.
+**Atualização da instalação Villa Natura existente:** aplique as migrações ainda não executadas (003, 004 e 005), uma vez cada, antes de publicar esta versão. A 003 preserva as categorias existentes, permite renomeá-las junto com os produtos e banners e adiciona preços promocionais. A 004 cria o armazenamento público nativa-images para fotos da loja, com envio somente por administradores autorizados. Não altera pedidos antigos.
 
 As tabelas nativa_* têm RLS habilitado. Visitantes leem apenas catálogo, banners visíveis e contato comercial. A função nativa_place_order valida o pedido, busca preços no banco e grava cliente e pedido em uma transação. Evita pedidos duplicados em tentativas repetidas e limita a seis pedidos por telefone a cada 15 minutos. Pedidos e clientes só podem ser lidos por administradores autorizados.
 
-Em **Área da Verdeva → Produtos**, cadastre ou edite nome, categoria, preço em reais, peso, foto, descrição, ingredientes, ordem e visibilidade. Ocultar preserva o item e os pedidos anteriores. Escolha uma categoria cadastrada, informe o preço normal e, opcionalmente, um preço promocional menor. Deixe a promoção vazia para encerrá-la. O desconto aparece na loja e é usado no carrinho e no pedido. Os pedidos anteriores mantêm os valores registrados.
+Em **Área da Villa Natura → Produtos**, cadastre ou edite nome, categoria, preço em reais, peso, foto, descrição, ingredientes, ordem e visibilidade. Ocultar preserva o item e os pedidos anteriores. Escolha uma categoria cadastrada, informe o preço normal e, opcionalmente, um preço promocional menor. Deixe a promoção vazia para encerrá-la. O desconto aparece na loja e é usado no carrinho e no pedido. Os pedidos anteriores mantêm os valores registrados.
 
 Em **Categorias**, crie e renomeie categorias e escolha sua ordem. Elas aparecem na seleção de produtos e banners e nos filtros da loja. Renomear atualiza os produtos e banners associados.
 
@@ -60,14 +60,14 @@ values ('COLE_O_USER_UID_AQUI'::uuid)
 on conflict (user_id) do nothing;
 ```
 
-5. Na loja, abra **Área da Verdeva** e entre com esse e-mail e senha.
+5. Na loja, abra **Área da Villa Natura** e entre com esse e-mail e senha.
 6. Em **Configurações**, salve o WhatsApp real da empresa: 55 + DDD + número.
 
 Uma conta sem associação em nativa_admins não tem acesso ao CRM. Não existe cadastro público de administradores. Para retirar um acesso, remova sua associação no painel do proprietário.
 
 ## Publicar na Netlify
 
-1. Importe **ryanzinnbueno/Verdeva**. Na autorização do GitHub, prefira acesso somente a este repositório.
+1. Importe **ryanzinnbueno/Villa Natura**. Na autorização do GitHub, prefira acesso somente a este repositório.
 2. Escolha branch **main** e pasta base vazia (package.json está na raiz).
 3. Build: **npm run build**. Publicação: **.next**. Node.js: **24**. netlify.toml já configura esses valores.
 4. Adicione as variáveis reais no painel da Netlify, disponíveis em **Builds e Functions**, no contexto de produção:
@@ -107,6 +107,8 @@ Minha conta usa Supabase Auth com celular e senha (mínimo 8 caracteres). Apliqu
 
 As fichas dos produtos exibem destaques, ingredientes e sugestões de uso, com itens relacionados. Preencha os novos campos em Produtos > Editar. A migração 202610090008_product_details.sql adiciona esses campos sem alterar os produtos existentes.
 
-A marca da loja e dos relatórios é Verdeva. Os links do Instagram foram removidos. Os nomes internos do banco, repositório e endereço de hospedagem continuam compatíveis com a instalação existente.
+A marca da loja e dos relatórios é Villa Natura. Os links do Instagram foram removidos. Os nomes internos do banco, repositório e endereço de hospedagem continuam compatíveis com a instalação existente.
 
 Ativação sem SMS: o painel do Supabase exige dados de um provedor mesmo com confirmação desligada. O script `scripts/ativar-login-telefone.ps1` usa a API oficial de gestão para configurar apenas `external_phone_enabled=true` e `sms_autoconfirm=true`. Gere um token pessoal da conta dona do projeto com acesso à configuração de autenticação, rode `powershell -ExecutionPolicy Bypass -File scripts/ativar-login-telefone.ps1` no CMD e cole o token na entrada oculta. Ele não é salvo no projeto nem deve ser enviado no chat. O script confirma os dois campos e verifica que a configuração de e-mail não mudou. A ativação por essa via ainda precisa ser conferida no projeto após executar o script. Referência: https://supabase.com/docs/reference/api/v1-update-auth-service-config
+
+A migração 202610090010_villa_natura.sql atualiza os textos de marca do catálogo e dos banners para Villa Natura.

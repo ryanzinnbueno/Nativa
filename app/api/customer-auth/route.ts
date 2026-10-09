@@ -73,7 +73,7 @@ export async function POST(request: Request) {
         return reply(
           {
             error:
-              "O cadastro por telefone ainda não está disponível. Fale com a Verdeva.",
+              "O cadastro por telefone ainda não está disponível. Fale com a Villa Natura.",
           },
           503,
         );

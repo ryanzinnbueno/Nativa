@@ -92,7 +92,7 @@ export function CustomerAccount({
   if (user)
     return (
       <div className="account-content my-orders">
-        <span className="eyebrow">SUA CONTA VERDEVA</span>
+        <span className="eyebrow">SUA CONTA VILLA NATURA</span>
         <h3>Olá, {user.name}!</h3>
         <p>{user.phone}</p>
         <div className="my-orders-heading">
@@ -157,7 +157,7 @@ export function CustomerAccount({
                 {o.delivery} · {o.payment}
               </p>
               {o.address && <p>{o.address}</p>}
-              <small>Entrega e pagamento são confirmados pela Verdeva.</small>
+              <small>Entrega e pagamento são confirmados pela Villa Natura.</small>
             </div>
           </details>
         ))}
@@ -216,7 +216,7 @@ export function CustomerAccount({
         <span className="welcome-leaf">
           <Leaf size={32} />
         </span>
-        <span className="eyebrow">BEM-VINDO À VERDEVA</span>
+        <span className="eyebrow">BEM-VINDO À VILLA NATURA</span>
         <h2>
           Seu bem viver
           <br />
@@ -347,7 +347,7 @@ export function CustomerAccount({
       </button>
       {mode === "login" && (
         <small className="account-note">
-          Esqueceu a senha? Fale com a Verdeva para receber orientação.
+          Esqueceu a senha? Fale com a Villa Natura para receber orientação.
         </small>
       )}
     </form>

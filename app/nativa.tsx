@@ -214,12 +214,12 @@ function Logo() {
     <span className="logo">
       <Leaf size={30} strokeWidth={1.4} />
       <span>
-        verdeva<small>PRODUTOS NATURAIS</small>
+        Villa Natura<small>PRODUTOS NATURAIS</small>
       </span>
     </span>
   );
 }
-export default function Verdeva() {
+export default function VillaNatura() {
   const [view, setView] = useState("loja"),
     [category, setCategory] = useState("Todos"),
     [search, setSearch] = useState(""),
@@ -610,7 +610,7 @@ export default function Verdeva() {
     };
     try {
       const result = await api<OrderResult>("POST", data);
-      const message = `Olá, Verdeva! Meu pedido #${result.id.slice(0, 8).toUpperCase()}:\n\n${result.items.map((i) => `${i.qty}x ${i.name} (${i.weight}) — ${money(i.price * i.qty)}`).join("\n")}\n\nSubtotal: ${money(result.total)}\nNome: ${data.name}\nTelefone: ${data.phone}\n${delivery}${data.address ? ": " + data.address : ""}\nPagamento: ${data.payment}\n${data.notes ? "Observações: " + data.notes : ""}\nEntrega e disponibilidade a confirmar.`;
+      const message = `Olá, Villa Natura! Meu pedido #${result.id.slice(0, 8).toUpperCase()}:\n\n${result.items.map((i) => `${i.qty}x ${i.name} (${i.weight}) — ${money(i.price * i.qty)}`).join("\n")}\n\nSubtotal: ${money(result.total)}\nNome: ${data.name}\nTelefone: ${data.phone}\n${delivery}${data.address ? ": " + data.address : ""}\nPagamento: ${data.payment}\n${data.notes ? "Observações: " + data.notes : ""}\nEntrega e disponibilidade a confirmar.`;
       setSuccess({
         ...result,
         channel,
@@ -673,7 +673,7 @@ export default function Verdeva() {
       setCurrentOrder(null);
       setCurrentCustomer(null);
       setLoadError("");
-      notify("Você saiu da Área da Verdeva");
+      notify("Você saiu da Área da Villa Natura");
     } catch (e) {
       notify((e as Error).message);
     }
@@ -698,14 +698,14 @@ export default function Verdeva() {
       <div className="announcement">
         <Leaf size={14} />
         <span>Pequenas escolhas. Uma vida mais natural.</span>
-        <span className="announcement-right">Conheça a Verdeva</span>
+        <span className="announcement-right">Conheça a Villa Natura</span>
       </div>
       <header className="header">
         <div className="header-inner">
           <button
             className="brand-button"
             onClick={shop}
-            aria-label="Verdeva início"
+            aria-label="Villa Natura início"
           >
             <Logo />
           </button>
@@ -726,7 +726,7 @@ export default function Verdeva() {
             </button>
             <button className="crm-link" onClick={openCRM}>
               <LayoutDashboard size={17} />
-              Área da Verdeva
+              Área da Villa Natura
             </button>
             <button
               className="icon-btn favorites-button"
@@ -777,7 +777,7 @@ export default function Verdeva() {
               Minha conta
             </button>
             <button onClick={about}>Sobre nós</button>
-            <button onClick={openCRM}>Área da Verdeva</button>
+            <button onClick={openCRM}>Área da Villa Natura</button>
           </nav>
         )}
         {view === "loja" && (
@@ -1142,7 +1142,7 @@ export default function Verdeva() {
               </div>
             </div>
             <div className="about-copy">
-              <span className="eyebrow">PRAZER, SOMOS A VERDEVA</span>
+              <span className="eyebrow">PRAZER, SOMOS A VILLA NATURA</span>
               <h2>
                 Natural é viver
                 <br />
@@ -1154,7 +1154,7 @@ export default function Verdeva() {
                 mesa.
               </p>
               <p>
-                A Verdeva é um convite para fazer escolhas mais naturais, no seu
+                A Villa Natura é um convite para fazer escolhas mais naturais, no seu
                 ritmo. Explore nossa seleção e encontre o que combina com sua
                 rotina.
               </p>
@@ -1187,7 +1187,7 @@ export default function Verdeva() {
         <main className="admin-login">
           <div className="settings-card">
             <ShieldCheck size={30} />
-            <span className="eyebrow">ÁREA DA VERDEVA</span>
+            <span className="eyebrow">ÁREA DA VILLA NATURA</span>
             <h1>Cuidar do negócio.</h1>
             <p>
               Entre com sua conta de administrador para acompanhar pedidos e
@@ -1222,7 +1222,7 @@ export default function Verdeva() {
               <button className="primary full" disabled={loginBusy || loading}>
                 {loginBusy || loading
                   ? "Entrando…"
-                  : "Entrar na Área da Verdeva"}
+                  : "Entrar na Área da Villa Natura"}
               </button>
             </form>
             <button className="text-button" onClick={shop}>
@@ -1234,7 +1234,7 @@ export default function Verdeva() {
         <main className="crm">
           <aside className="crm-sidebar">
             <div>
-              <span className="eyebrow">ÁREA DA VERDEVA</span>
+              <span className="eyebrow">ÁREA DA VILLA NATURA</span>
               <h2>
                 Um cuidado
                 <br />
@@ -1269,7 +1269,7 @@ export default function Verdeva() {
             <div className="crm-sidebar-bottom">
               <ShieldCheck size={20} />
               <span>
-                Acesso restrito<small>Gestão da Verdeva</small>
+                Acesso restrito<small>Gestão da Villa Natura</small>
               </span>
             </div>
           </aside>
@@ -1277,7 +1277,7 @@ export default function Verdeva() {
             <div className="crm-heading">
               <div>
                 <span className="eyebrow">
-                  VERDEVA /{" "}
+                  VILLA NATURA /{" "}
                   {tab === "overview"
                     ? "VISÃO GERAL"
                     : tab === "orders"
@@ -1326,7 +1326,7 @@ export default function Verdeva() {
                       ? "Da primeira escolha até a entrega."
                       : tab === "customers"
                         ? "Conheça seus clientes e mantenha o atendimento próximo."
-                        : "Prepare o atendimento da Verdeva."}
+                        : "Prepare o atendimento da Villa Natura."}
                 </p>
               </div>
               <div className="admin-actions">
@@ -1467,7 +1467,7 @@ export default function Verdeva() {
                     <p>
                       {phone
                         ? "Seu WhatsApp está pronto para receber os pedidos."
-                        : "Adicione o WhatsApp da Verdeva para receber a sacola pronta na conversa."}
+                        : "Adicione o WhatsApp da Villa Natura para receber a sacola pronta na conversa."}
                     </p>
                   </div>
                   <button
@@ -1653,7 +1653,7 @@ export default function Verdeva() {
             {tab === "settings" && (
               <div className="settings-card">
                 <MessageCircle size={30} />
-                <h2>WhatsApp da Verdeva</h2>
+                <h2>WhatsApp da Villa Natura</h2>
                 <p>
                   Os clientes podem continuar o pedido com uma mensagem que já
                   inclui os produtos e os dados de entrega.
@@ -1702,13 +1702,13 @@ export default function Verdeva() {
           <p>O natural faz parte de você.</p>
           <div>
             <button onClick={about}>Sobre nós</button>
-            <button onClick={openCRM}>Área da Verdeva</button>
+            <button onClick={openCRM}>Área da Villa Natura</button>
             <button onClick={openOffers}>Ofertas</button>
             <button onClick={() => setAccountOpen(true)}>Minha conta</button>
           </div>
         </div>
         <div className="footer-bottom">
-          <span>© 2026 Verdeva</span>
+          <span>© 2026 Villa Natura</span>
           <span>Confirme valores e disponibilidade com a loja.</span>
         </div>
         <div className="image-credits">
@@ -1750,7 +1750,7 @@ export default function Verdeva() {
           </button>
           <button onClick={about}>
             <Leaf size={20} />
-            <span>A Verdeva</span>
+            <span>A Villa Natura</span>
           </button>
           <button onClick={() => setCartOpen(true)}>
             <span className="mobile-bag">
@@ -1788,7 +1788,7 @@ export default function Verdeva() {
       )}
       {accountOpen && (
         <Modal
-          title={shopUser ? "Minha conta" : "Bem-vindo à Verdeva"}
+          title={shopUser ? "Minha conta" : "Bem-vindo à Villa Natura"}
           close={closeAccount}
           className={
             accountMode === "welcome" && !shopUser ? "welcome-modal" : ""
@@ -1822,12 +1822,12 @@ export default function Verdeva() {
                   src={promotion.image || offerProducts[0].image}
                   alt={
                     promotion.image
-                      ? "Seleção de ofertas da Verdeva"
+                      ? "Seleção de ofertas da Villa Natura"
                       : offerProducts[0].name
                   }
                 />
                 <span className="promotion-brand">
-                  <Leaf size={16} /> verdeva <small>NATURAL</small>
+                  <Leaf size={16} /> Villa Natura <small>NATURAL</small>
                 </span>
                 <span className="promotion-sticker">
                   Escolhas
@@ -2050,7 +2050,7 @@ export default function Verdeva() {
               <p>
                 {success.channel === "WhatsApp"
                   ? "Continue no WhatsApp para enviar sua mensagem à loja."
-                  : "Recebemos seu pedido! A Verdeva vai confirmar os próximos passos com você."}
+                  : "Recebemos seu pedido! A Villa Natura vai confirmar os próximos passos com você."}
               </p>
               <small>
                 Nenhum pagamento foi cobrado. Entrega e disponibilidade a
@@ -2204,7 +2204,7 @@ export default function Verdeva() {
               </button>
               {!phone && (
                 <small className="center">
-                  Para falar com a Verdeva, finalize seu pedido pelo site.
+                  Para falar com a Villa Natura, finalize seu pedido pelo site.
                 </small>
               )}
             </form>

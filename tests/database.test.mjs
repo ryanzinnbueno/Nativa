@@ -106,6 +106,7 @@ before(async () => {
       "utf8",
     ),
   );
+  await db.exec(await readFile(new URL('../supabase/migrations/202610090010_villa_natura.sql', import.meta.url), 'utf8'));
 });
 after(async () => {
   await db?.close();

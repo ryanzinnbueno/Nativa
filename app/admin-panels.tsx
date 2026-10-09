@@ -15,8 +15,14 @@ import { BannerImageEditor } from "./banner-image-editor";
 import { imageFrame } from "./banner-image";
 import { bannerNeedsText } from "../lib/banner-presentation";
 import { TrashAction } from "./trash-panel";
+import { ProductPreview } from "./product-preview";
+import {
+  fullProductImage,
+  type ProductImageSettings,
+} from "../lib/product-image";
 import { sellingPrice } from "../lib/pricing";
 type Product = (typeof examples)[number] & {
+  image_settings?: ProductImageSettings | null;
   sale_price?: number | null;
   highlights?: string;
   usage?: string;
@@ -97,6 +103,8 @@ export function CatalogPanel({
             ...examples[0],
             id: crypto.randomUUID(),
             name: "",
+            image: "",
+            image_settings: { ...fullProductImage },
             subtitle: "",
             weight: "",
             price: 0,
@@ -212,15 +220,31 @@ export function CatalogPanel({
           </div>
           <div className="editor-grid">
             <div className="editor-photo">
-              <img src={item.image} alt="Prévia da imagem" />
+              {kind === "product" ? (
+                <ProductPreview
+                  product={item as Product}
+                  onFrame={(frame) =>
+                    setItem({ ...item, image_settings: frame } as Product)
+                  }
+                />
+              ) : (
+                <img src={item.image} alt="Prévia da imagem" />
+              )}
               <ImageUpload
                 key={item.id}
                 kind={kind}
                 onBusy={setUploadBusy}
                 onUploaded={(url) =>
-                  setItem((current) =>
-                    current ? { ...current, image: url } : current,
-                  )
+                  setItem((current) => {
+                    if (!current) return null;
+                    return kind === "product"
+                      ? {
+                          ...(current as Product),
+                          image: url,
+                          image_settings: { ...fullProductImage },
+                        }
+                      : { ...(current as Banner), image: url };
+                  })
                 }
               />
               <label>
@@ -303,37 +327,48 @@ export function CatalogPanel({
                     </small>
                   </label>
                   {field("tag", "Destaque curto", false, 60)}
-                  {field("ingredients", "Ingredientes e cuidados", false, 2000)}
-                  <label>
-                    Destaques do produto
-                    <textarea
-                      maxLength={1000}
-                      rows={4}
-                      value={(item as Product).highlights || ""}
-                      onChange={(e) =>
-                        setItem({
-                          ...item,
-                          highlights: e.target.value,
-                        } as Product)
-                      }
-                      placeholder="Escreva um destaque por linha"
-                    />
-                    <small>
-                      Inclua características reais do produto, uma por linha.
-                    </small>
-                  </label>
-                  <label>
-                    Como usar ou consumir
-                    <textarea
-                      maxLength={1200}
-                      rows={4}
-                      value={(item as Product).usage || ""}
-                      onChange={(e) =>
-                        setItem({ ...item, usage: e.target.value } as Product)
-                      }
-                      placeholder="Sugestões de preparo e uso (opcional)"
-                    />
-                  </label>
+                  <details className="editor-extra-information">
+                    <summary>Informações adicionais (opcional)</summary>
+                    <p>
+                      Estes textos aparecem quando o cliente abre o produto.
+                    </p>
+                    {field(
+                      "ingredients",
+                      "Ingredientes e cuidados",
+                      false,
+                      2000,
+                    )}
+                    <label>
+                      Destaques do produto
+                      <textarea
+                        maxLength={1000}
+                        rows={4}
+                        value={(item as Product).highlights || ""}
+                        onChange={(e) =>
+                          setItem({
+                            ...item,
+                            highlights: e.target.value,
+                          } as Product)
+                        }
+                        placeholder="Escreva um destaque por linha"
+                      />
+                      <small>
+                        Inclua características reais do produto, uma por linha.
+                      </small>
+                    </label>
+                    <label>
+                      Como usar ou consumir
+                      <textarea
+                        maxLength={1200}
+                        rows={4}
+                        value={(item as Product).usage || ""}
+                        onChange={(e) =>
+                          setItem({ ...item, usage: e.target.value } as Product)
+                        }
+                        placeholder="Sugestões de preparo e uso (opcional)"
+                      />
+                    </label>
+                  </details>
                 </>
               ) : (
                 <>

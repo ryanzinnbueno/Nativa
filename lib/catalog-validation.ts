@@ -1,3 +1,4 @@
+import type { ProductImageSettings } from "./product-image";
 const text = (v: unknown, max: number, required = false): string => {
   if (typeof v !== "string" || v.trim().length > max || (required && !v.trim()))
     throw new Error("Confira os campos preenchidos.");
@@ -59,6 +60,9 @@ export function validateProduct(b: Record<string, unknown>) {
     image: imageAddress(b.image),
     description: text(b.description, 2000),
     ingredients: text(b.ingredients, 2000),
+    ...(b.image_settings !== undefined
+      ? { image_settings: validateProductImage(b.image_settings) }
+      : {}),
     ...(b.highlights !== undefined
       ? { highlights: text(b.highlights, 1000) }
       : {}),
@@ -164,5 +168,33 @@ function validateImageSettings(value: unknown) {
     ...(settings.mobile_image
       ? { mobile_image: imageAddress(settings.mobile_image) }
       : {}),
+  };
+}
+
+export function validateProductImage(
+  value: unknown,
+): ProductImageSettings | null {
+  if (value === null) return null;
+  if (!value || typeof value !== "object" || Array.isArray(value))
+    throw new Error("Confira o ajuste da foto.");
+  const f = value as Record<string, unknown>;
+  if (
+    !["contain", "cover"].includes(f.fit as string) ||
+    !Number.isInteger(f.zoom) ||
+    (f.zoom as number) < 100 ||
+    (f.zoom as number) > 250 ||
+    !Number.isInteger(f.x) ||
+    (f.x as number) < 0 ||
+    (f.x as number) > 100 ||
+    !Number.isInteger(f.y) ||
+    (f.y as number) < 0 ||
+    (f.y as number) > 100
+  )
+    throw new Error("Confira o ajuste da foto.");
+  return {
+    fit: f.fit as ProductImageSettings["fit"],
+    zoom: f.zoom as number,
+    x: f.x as number,
+    y: f.y as number,
   };
 }

@@ -43,7 +43,7 @@ export async function GET(request: Request) {
       client
         .from("nativa_products")
         .select(
-          "id,name,subtitle,category,weight,price,sale_price,tag,image,description,ingredients,highlights,usage",
+          "id,name,subtitle,category,weight,price,sale_price,tag,image,image_settings,description,ingredients,highlights,usage",
         )
         .eq("active", true)
         .is("deleted_at", null)

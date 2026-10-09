@@ -1,4 +1,7 @@
 "use client";
+import { ProductImage } from "./product-image";
+import { ProductInformation } from "./product-information";
+import type { ProductImageSettings } from "../lib/product-image";
 import HeroCarousel from "./hero-carousel";
 import { defaultBanners, type Banner } from "./banner-data";
 import { TrashPanel, TrashAction } from "./trash-panel";
@@ -55,6 +58,7 @@ import {
 } from "lucide-react";
 import { products as demoProducts, money, statuses } from "./catalog";
 type Product = (typeof demoProducts)[number] & {
+  image_settings?: ProductImageSettings | null;
   sale_price?: number | null;
   highlights?: string;
   usage?: string;
@@ -1030,16 +1034,7 @@ export default function VillaNatura() {
                     aria-label={`Abrir ${p.name}`}
                   />
                   <div className={"product-photo product-" + p.id}>
-                    <div className="product-view">
-                      <img
-                        src={p.image}
-                        alt={p.name}
-                        loading="lazy"
-                        onError={(e) => {
-                          e.currentTarget.src = "/images/mix.jpg";
-                        }}
-                      />
-                    </div>
+                    <ProductImage product={p} />
                     <span className="product-tag">{p.tag}</span>
                     {p.sale_price != null && (
                       <span className="sale-badge">Em oferta</span>
@@ -1852,7 +1847,11 @@ export default function VillaNatura() {
           wide
         >
           <div className="product-detail">
-            <img src={selected.image} alt={selected.name} />
+            <ProductImage
+              product={selected}
+              className="product-detail-photo"
+              lazy={false}
+            />
             <div>
               <span className="eyebrow">{selected.category}</span>
               <h2>{selected.name}</h2>
@@ -1872,38 +1871,7 @@ export default function VillaNatura() {
                 <ShoppingCart size={18} aria-hidden="true" />
                 Adicionar à sacola
               </button>
-              <section className="product-information">
-                <h3>Destaques</h3>
-                <ul>
-                  {(selected.highlights?.trim()
-                    ? selected.highlights
-                        .split(/\r?\n/)
-                        .map((v) => v.trim())
-                        .filter(Boolean)
-                    : [
-                        selected.tag,
-                        selected.subtitle,
-                        `Embalagem de ${selected.weight}`,
-                      ].filter(Boolean)
-                  ).map((v, i) => (
-                    <li key={i}>{v}</li>
-                  ))}
-                </ul>
-              </section>
-              {selected.usage?.trim() && (
-                <section className="product-information">
-                  <h3>Como usar ou consumir</h3>
-                  <p>{selected.usage}</p>
-                </section>
-              )}
-              <section className="product-information">
-                <h3>Ingredientes e cuidados</h3>
-                {selected.ingredients && <p>{selected.ingredients}</p>}
-                <small>
-                  Confira os ingredientes no rótulo e a disponibilidade com a
-                  loja.
-                </small>
-              </section>
+              <ProductInformation product={selected} />
             </div>
           </div>
           {products.some(

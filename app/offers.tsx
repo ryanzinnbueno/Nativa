@@ -1,7 +1,10 @@
+import { ProductImage } from "./product-image";
+import type { ProductImageSettings } from "../lib/product-image";
 import { Tag, ShoppingCart } from "lucide-react";
 import { money } from "./catalog";
 import { sellingPrice } from "../lib/pricing";
 type OfferProduct = {
+  image_settings?: ProductImageSettings | null;
   id: string;
   name: string;
   image: string;
@@ -46,7 +49,7 @@ export function Offers({
                 onClick={() => onProduct(p.id)}
               />
               <div className="offer-image">
-                <img src={p.image} alt={p.name} loading="lazy" />
+                <ProductImage product={p} />
                 <span>
                   <Tag size={13} />
                   Em oferta

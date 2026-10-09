@@ -124,6 +124,15 @@ before(async () => {
       "utf8",
     ),
   );
+  await db.exec(
+    await readFile(
+      new URL(
+        "../supabase/migrations/202610090012_product_images.sql",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+  );
 });
 after(async () => {
   await db?.close();
@@ -176,17 +185,31 @@ test("categories can be created only by admins; renaming updates product and ban
   );
 });
 
-test('featured category choices persist publicly, while only admins can change them', async () => {
-  await as('authenticated',admin,()=>db.exec("update nativa_categories set featured=true, story_image='/images/flores.webp', story_title='Meu destaque' where id='flores'"));
-  await as('anon',null,async()=>{
-    const {rows}=await db.query("select featured,story_title from nativa_categories where id='flores'");
-    assert.equal(rows[0].featured,true); assert.equal(rows[0].story_title,'Meu destaque');
-    await assert.rejects(db.exec("update nativa_categories set featured=false where id='flores'"));
+test("featured category choices persist publicly, while only admins can change them", async () => {
+  await as("authenticated", admin, () =>
+    db.exec(
+      "update nativa_categories set featured=true, story_image='/images/flores.webp', story_title='Meu destaque' where id='flores'",
+    ),
+  );
+  await as("anon", null, async () => {
+    const { rows } = await db.query(
+      "select featured,story_title from nativa_categories where id='flores'",
+    );
+    assert.equal(rows[0].featured, true);
+    assert.equal(rows[0].story_title, "Meu destaque");
+    await assert.rejects(
+      db.exec("update nativa_categories set featured=false where id='flores'"),
+    );
   });
-  await as('authenticated',outsider,async()=>{
-    const {rows}=await db.query("update nativa_categories set featured=false where id='flores' returning id"); assert.equal(rows.length,0);
+  await as("authenticated", outsider, async () => {
+    const { rows } = await db.query(
+      "update nativa_categories set featured=false where id='flores' returning id",
+    );
+    assert.equal(rows.length, 0);
   });
-  await as('authenticated',admin,()=>db.exec("update nativa_categories set featured=false where id='flores'"));
+  await as("authenticated", admin, () =>
+    db.exec("update nativa_categories set featured=false where id='flores'"),
+  );
 });
 test("marketing uploads allow admins only and do not permit overwrites or customer-document paths", async () => {
   const insert =
@@ -760,5 +783,36 @@ test("customer sessions see only their own orders, never guest history for the s
       ])
     ).rows[0].account_id,
     null,
+  );
+});
+
+test("product photo framing is public while updates stay admin-only and invalid crops are rejected", async () => {
+  const crop = JSON.stringify({ fit: "cover", zoom: 160, x: 35, y: 70 });
+  await as("authenticated", admin, () =>
+    db.query(
+      "update nativa_products set image_settings=$1::jsonb where id='caju'",
+      [crop],
+    ),
+  );
+  await as("anon", null, async () => {
+    const { rows } = await db.query(
+      "select image_settings from nativa_products where id='caju'",
+    );
+    assert.equal(rows[0].image_settings.zoom, 160);
+    await assert.rejects(
+      db.exec("update nativa_products set image_settings=null where id='caju'"),
+    );
+  });
+  await as("authenticated", outsider, async () => {
+    const { rows } = await db.query(
+      "update nativa_products set image_settings=null where id='caju' returning id",
+    );
+    assert.equal(rows.length, 0);
+  });
+  await assert.rejects(
+    db.query(
+      "update nativa_products set image_settings=$1::jsonb where id='caju'",
+      [JSON.stringify({ fit: "cover", zoom: 300, x: 50, y: 50 })],
+    ),
   );
 });

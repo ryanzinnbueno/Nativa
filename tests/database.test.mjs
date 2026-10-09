@@ -79,6 +79,16 @@ before(async () => {
       "utf8",
     ),
   );
+  await db.exec(
+    await readFile(
+      new URL(
+        "../supabase/migrations/202610090007_promotions.sql",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+  );
+  await db.exec(await readFile(new URL("../supabase/migrations/202610090008_product_details.sql", import.meta.url), "utf8"));
 });
 after(async () => {
   await db?.close();
@@ -568,4 +578,49 @@ test("banner framing persists for admins and is publicly readable without granti
     ).rows[0].image_settings,
     settings,
   );
+});
+
+test("promotion settings are public, while updates stay restricted to administrators", async () => {
+  const original = (
+    await db.query("select promotion from nativa_settings where id=1")
+  ).rows[0].promotion;
+  await as("anon", null, async () => {
+    assert.deepEqual(
+      (await db.query("select promotion from nativa_settings where id=1"))
+        .rows[0].promotion,
+      original,
+    );
+    await assert.rejects(
+      db.exec("update nativa_settings set promotion='{}'::jsonb where id=1"),
+    );
+  });
+  await as("authenticated", outsider, () =>
+    db.exec("update nativa_settings set promotion='{}'::jsonb where id=1"),
+  );
+  assert.deepEqual(
+    (await db.query("select promotion from nativa_settings where id=1")).rows[0]
+      .promotion,
+    original,
+  );
+  await as("authenticated", admin, () =>
+    db.query("update nativa_settings set promotion=$1::jsonb where id=1", [
+      JSON.stringify({ ...original, enabled: false }),
+    ]),
+  );
+  assert.equal(
+    (await db.query("select promotion from nativa_settings where id=1")).rows[0]
+      .promotion.enabled,
+    false,
+  );
+});
+
+test("product details preserve admin-only editing and reject excessive content", async () => {
+  await as("authenticated", admin, () => db.query("update nativa_products set highlights=$1,usage=$2 where id='caju'", ["Torrada\nSem sal", "Sugestão de uso informada pela loja"]));
+  await as("authenticated", outsider, () => db.exec("update nativa_products set highlights='alterado' where id='caju'"));
+  await as("anon", null, async () => {
+    const row = (await db.query("select highlights,usage from nativa_products where id='caju'")).rows[0];
+    assert.equal(row.highlights, "Torrada\nSem sal");
+    assert.equal(row.usage, "Sugestão de uso informada pela loja");
+  });
+  await as("authenticated", admin, () => assert.rejects(db.query("update nativa_products set highlights=$1 where id='caju'", ["x".repeat(1001)])));
 });

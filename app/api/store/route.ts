@@ -42,14 +42,14 @@ export async function GET(request: Request) {
       client
         .from("nativa_products")
         .select(
-          "id,name,subtitle,category,weight,price,sale_price,tag,image,description,ingredients",
+          "id,name,subtitle,category,weight,price,sale_price,tag,image,description,ingredients,highlights,usage",
         )
         .eq("active", true)
         .is("deleted_at", null)
         .order("position"),
       client
         .from("nativa_settings")
-        .select("phone,banner_seconds,banner_autoplay")
+        .select("phone,banner_seconds,banner_autoplay,promotion")
         .eq("id", 1)
         .single(),
       client

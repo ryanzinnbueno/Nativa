@@ -6,6 +6,16 @@ import { CatalogPanel, ReportsPanel } from "./admin-panels";
 import { CategoriesPanel } from "./categories-panel";
 import { defaultCategories, type Category } from "./category-data";
 import { sellingPrice } from "../lib/pricing";
+import {
+  defaultPromotion,
+  isOffer,
+  searchMatches,
+  brazilPhone,
+  type Promotion,
+} from "../lib/shop-features";
+import { CustomerAccount, type ShopUser } from "./customer-account";
+import { PromotionsPanel } from "./promotions-panel";
+import { Offers } from "./offers";
 import { useEffect, useState, useRef, useCallback, FormEvent } from "react";
 import {
   Leaf,
@@ -37,9 +47,15 @@ import {
   Wheat,
   Nut,
   Sun,
+  UserRound,
+  Tag,
 } from "lucide-react";
 import { products as demoProducts, money, statuses } from "./catalog";
-type Product = (typeof demoProducts)[number] & { sale_price?: number | null };
+type Product = (typeof demoProducts)[number] & {
+  sale_price?: number | null;
+  highlights?: string;
+  usage?: string;
+};
 type CartItem = { id: string; qty: number };
 type Customer = {
   id: string;
@@ -90,6 +106,7 @@ type StoreData = {
   banners?: Banner[];
   banner_seconds?: number;
   banner_autoplay?: boolean;
+  promotion?: Promotion;
 };
 type OrderResult = { id: string; total: number; items: Order["items"] };
 async function api<T = StoreData>(
@@ -242,6 +259,70 @@ export default function Nativa() {
   const [bannerAutoplay, setBannerAutoplay] = useState(true);
   const [storeError, setStoreError] = useState("");
   const [storeCategories, setStoreCategories] = useState(defaultCategories);
+  const [offersOnly, setOffersOnly] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
+  const [shopUser, setShopUser] = useState<ShopUser | null>(null);
+  const [promotion, setPromotion] = useState<Promotion>(defaultPromotion);
+  const [promotionOpen, setPromotionOpen] = useState(false);
+  const offerProducts = products.filter(isOffer);
+  const promoKey = JSON.stringify(promotion);
+  useEffect(() => {
+    let cancelled = false;
+    void Promise.resolve().then(() => {
+      try {
+        const saved = JSON.parse(
+          localStorage.getItem("nativa-cadastro-rapido") || "null",
+        );
+        if (
+          !cancelled &&
+          saved &&
+          typeof saved.name === "string" &&
+          saved.name.trim().length >= 2 &&
+          saved.name.length <= 100
+        )
+          setShopUser({ name: saved.name, phone: brazilPhone(saved.phone) });
+      } catch {}
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  useEffect(() => {
+    if (
+      !cartReady ||
+      storeError ||
+      !promotion.enabled ||
+      !offerProducts.length ||
+      view !== "loja" ||
+      cartOpen ||
+      checkout ||
+      selected ||
+      accountOpen
+    )
+      return;
+    try {
+      if (sessionStorage.getItem("nativa-aviso-ofertas") === promoKey) return;
+    } catch {}
+    const timer = setTimeout(() => setPromotionOpen(true), 6000);
+    return () => clearTimeout(timer);
+  }, [
+    cartReady,
+    storeError,
+    promotion.enabled,
+    offerProducts.length,
+    promoKey,
+    view,
+    cartOpen,
+    checkout,
+    selected,
+    accountOpen,
+  ]);
+  const dismissPromotion = () => {
+    setPromotionOpen(false);
+    try {
+      sessionStorage.setItem("nativa-aviso-ofertas", promoKey);
+    } catch {}
+  };
   const categories = [
     { name: "Todos", icon: Leaf },
     ...storeCategories.map((c) => ({
@@ -318,6 +399,7 @@ export default function Nativa() {
           : "Todos",
       );
       if (d.banners) setBanners(d.banners);
+      setPromotion(d.promotion ?? defaultPromotion);
       setBannerSeconds(d.banner_seconds ?? 7);
       setBannerAutoplay(d.banner_autoplay ?? true);
       setCart((c) => c.filter((i) => d.products.some((p) => p.id === i.id)));
@@ -344,6 +426,7 @@ export default function Nativa() {
             : "Todos",
         );
         if (d.banners) setBanners(d.banners);
+        setPromotion(d.promotion ?? defaultPromotion);
         setBannerSeconds(d.banner_seconds ?? 7);
         setBannerAutoplay(d.banner_autoplay ?? true);
         setPhone(d.phone);
@@ -425,9 +508,8 @@ export default function Nativa() {
       (p) =>
         (category === "Todos" || p.category === category) &&
         (!favoriteOnly || favorite.includes(p.id)) &&
-        (p.name + " " + p.subtitle)
-          .toLocaleLowerCase("pt-BR")
-          .includes(search.toLocaleLowerCase("pt-BR")),
+        (!offersOnly || isOffer(p)) &&
+        searchMatches(p, search),
     )
     .sort((a, b) =>
       sort === "menor"
@@ -442,8 +524,24 @@ export default function Nativa() {
     );
   const shop = () => {
     setView("loja");
+    setOffersOnly(false);
     setMenu(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+  const openOffers = () => {
+    setView("loja");
+    setMenu(false);
+    setOffersOnly(true);
+    setCategory("Todos");
+    setSearch("");
+    setFavoriteOnly(false);
+    setTimeout(
+      () =>
+        document
+          .getElementById("catalogo")
+          ?.scrollIntoView({ behavior: "smooth" }),
+      60,
+    );
   };
   const openCRM = () => {
     setView("crm");
@@ -601,6 +699,7 @@ export default function Nativa() {
               Nossa loja
             </button>
             <button onClick={about}>Sobre nós</button>
+            <button onClick={openOffers}>Ofertas</button>
             <a
               href="https://www.instagram.com/nativabemviver/"
               target="_blank"
@@ -610,6 +709,13 @@ export default function Nativa() {
             </a>
           </nav>
           <div className="header-actions">
+            <button
+              className="icon-btn"
+              aria-label="Meu cadastro"
+              onClick={() => setAccountOpen(true)}
+            >
+              <UserRound size={21} />
+            </button>
             <button className="crm-link" onClick={openCRM}>
               <LayoutDashboard size={17} />
               Área da Nativa
@@ -653,9 +759,53 @@ export default function Nativa() {
         {menu && (
           <nav className="menu-panel">
             <button onClick={shop}>Nossa loja</button>
+            <button onClick={openOffers}>Ofertas</button>
+            <button
+              onClick={() => {
+                setMenu(false);
+                setAccountOpen(true);
+              }}
+            >
+              Meu cadastro
+            </button>
             <button onClick={about}>Sobre nós</button>
             <button onClick={openCRM}>Área da Nativa</button>
           </nav>
+        )}
+        {view === "loja" && (
+          <form
+            className="top-search"
+            role="search"
+            onSubmit={(e) => {
+              e.preventDefault();
+              setCategory("Todos");
+              setFavoriteOnly(false);
+              setOffersOnly(false);
+              document
+                .getElementById("catalogo")
+                ?.scrollIntoView({ behavior: "smooth" });
+            }}
+          >
+            <Search size={19} />
+            <input
+              aria-label="Pesquisar na loja"
+              placeholder="O que você procura? Castanhas, chás…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            {search && (
+              <button
+                type="button"
+                aria-label="Limpar pesquisa do topo"
+                onClick={() => setSearch("")}
+              >
+                <X size={18} />
+              </button>
+            )}
+            <button type="submit" aria-label="Pesquisar produtos">
+              <Search size={19} />
+            </button>
+          </form>
         )}
       </header>
       {view === "loja" ? (
@@ -666,6 +816,7 @@ export default function Nativa() {
             autoplay={bannerAutoplay}
             onExplore={(c) => {
               setCategory(c);
+              setOffersOnly(false);
               setSearch("");
               setFavoriteOnly(false);
               document
@@ -703,6 +854,18 @@ export default function Nativa() {
               </span>
             </div>
           </div>
+          <Offers
+            products={offerProducts}
+            ready={cartReady}
+            onAll={openOffers}
+            onProduct={(id) =>
+              setSelected(products.find((p) => p.id === id) || null)
+            }
+            onAdd={(id) => {
+              const p = products.find((p) => p.id === id);
+              if (p) add(p);
+            }}
+          />
           <section
             className="category-stories section"
             aria-labelledby="category-stories-title"
@@ -751,6 +914,7 @@ export default function Nativa() {
                     className={"category-story category-story-" + index}
                     onClick={() => {
                       setCategory(card.category);
+                      setOffersOnly(false);
                       setSearch("");
                       setFavoriteOnly(false);
                       document
@@ -780,7 +944,10 @@ export default function Nativa() {
               <div>
                 <span className="eyebrow">SUA DESPENSA, MAIS NATURAL</span>
                 <h2>
-                  Encontre seu próximo favorito<span>.</span>
+                  {offersOnly
+                    ? "Produtos em oferta"
+                    : "Encontre seu próximo favorito"}
+                  <span>.</span>
                 </h2>
               </div>
               <span className="quiet">
@@ -788,6 +955,14 @@ export default function Nativa() {
               </span>
             </div>
             <div className="catalog-tools">
+              <button
+                className={"offers-filter " + (offersOnly ? "selected" : "")}
+                aria-pressed={offersOnly}
+                onClick={() => setOffersOnly((v) => !v)}
+              >
+                <Tag size={17} />
+                Só ofertas
+              </button>
               <div className="categories" aria-label="Categorias">
                 {categories.map((c) => (
                   <button
@@ -844,6 +1019,17 @@ export default function Nativa() {
                 </select>
               </label>
             </div>
+            {offersOnly && (
+              <p className="offers-description">
+                Preços promocionais para aproveitar suas escolhas.{" "}
+                <button
+                  className="text-button"
+                  onClick={() => setOffersOnly(false)}
+                >
+                  Ver todos os produtos
+                </button>
+              </p>
+            )}
             <div className="product-grid">
               {filtered.map((p, i) => (
                 <article
@@ -891,6 +1077,12 @@ export default function Nativa() {
                       {p.name}
                     </button>
                     <p>{p.subtitle}</p>
+                    <button
+                      className="product-details-link"
+                      onClick={() => setSelected(p)}
+                    >
+                      Ver detalhes
+                    </button>
                     <div className="product-bottom">
                       <div>
                         <small>{p.weight}</small>
@@ -1067,6 +1259,7 @@ export default function Nativa() {
               { id: "products", label: "Produtos", icon: Package },
               { id: "categories", label: "Categorias", icon: Leaf },
               { id: "banners", label: "Banners", icon: SlidersHorizontal },
+              { id: "promotions", label: "Promoções", icon: Tag },
               { id: "reports", label: "Relatórios", icon: Download },
               { id: "trash", label: "Lixeira", icon: Package },
               { id: "settings", label: "Configurações", icon: Settings },
@@ -1112,7 +1305,9 @@ export default function Nativa() {
                                 ? "RELATÓRIOS"
                                 : tab === "trash"
                                   ? "LIXEIRA"
-                                  : "CONFIGURAÇÕES"}
+                                  : tab === "promotions"
+                                    ? "PROMOÇÕES"
+                                    : "CONFIGURAÇÕES"}
                 </span>
                 <h1>
                   {tab === "overview"
@@ -1131,7 +1326,9 @@ export default function Nativa() {
                                 ? "Um olhar sobre os pedidos."
                                 : tab === "trash"
                                   ? "Recupere quando precisar."
-                                  : "Do seu jeito."}
+                                  : tab === "promotions"
+                                    ? "Uma seleção para aproveitar."
+                                    : "Do seu jeito."}
                 </h1>
                 <p>
                   {tab === "overview"
@@ -1161,6 +1358,7 @@ export default function Nativa() {
                 ["products", "Produtos"],
                 ["categories", "Categorias"],
                 ["banners", "Banners"],
+                ["promotions", "Promoções"],
                 ["reports", "Relatórios"],
                 ["trash", "Lixeira"],
                 ["settings", "Ajustes"],
@@ -1459,6 +1657,9 @@ export default function Nativa() {
               />
             )}
             {tab === "reports" && <ReportsPanel />}
+            {tab === "promotions" && (
+              <PromotionsPanel onSaved={() => void loadStore()} />
+            )}
             {tab === "trash" && <TrashPanel onSaved={loadStore} />}
             {tab === "settings" && (
               <div className="settings-card">
@@ -1521,6 +1722,8 @@ export default function Nativa() {
               Instagram
             </a>
             <button onClick={openCRM}>Área da Nativa</button>
+            <button onClick={openOffers}>Ofertas</button>
+            <button onClick={() => setAccountOpen(true)}>Meu cadastro</button>
           </div>
         </div>
         <div className="footer-bottom">
@@ -1602,12 +1805,53 @@ export default function Nativa() {
           {toast}
         </div>
       )}
+      {accountOpen && (
+        <Modal title="Meu cadastro" close={() => setAccountOpen(false)}>
+          <CustomerAccount
+            user={shopUser}
+            onUser={setShopUser}
+            close={() => setAccountOpen(false)}
+          />
+        </Modal>
+      )}
+      {promotionOpen &&
+        promotion.enabled &&
+        offerProducts.length > 0 &&
+        !storeError &&
+        view === "loja" &&
+        !accountOpen &&
+        !cartOpen &&
+        !checkout &&
+        !selected && (
+          <Modal title={promotion.title} close={dismissPromotion}>
+            <div className="promotion-notice">
+              {promotion.image && (
+                <img src={promotion.image} alt="Seleção de ofertas da Nativa" />
+              )}
+              <p>{promotion.message}</p>
+              <span>
+                {offerProducts.length}{" "}
+                {offerProducts.length === 1
+                  ? "produto em oferta"
+                  : "produtos em oferta"}
+              </span>
+              <button
+                className="primary full"
+                onClick={() => {
+                  dismissPromotion();
+                  openOffers();
+                }}
+              >
+                {promotion.cta}
+              </button>
+              <button className="text-button full" onClick={dismissPromotion}>
+                Agora não
+              </button>
+            </div>
+          </Modal>
+        )}
       {selected && (
-        <Modal
-          close={() => setSelected(null)}
-          title="Um pouco mais sobre esse favorito"
-          wide
-        >
+        <Modal key={selected.id} close={() => setSelected(null)} title={selected.name} wide>
           <div className="product-detail">
             <img src={selected.image} alt={selected.name} />
             <div>
@@ -1629,16 +1873,65 @@ export default function Nativa() {
                 <ShoppingCart size={18} aria-hidden="true" />
                 Adicionar à sacola
               </button>
-              <details>
-                <summary>Ingredientes e informações</summary>
-                <p>{selected.ingredients}</p>
+              <section className="product-information">
+                <h3>Destaques</h3>
+                <ul>
+                  {(selected.highlights?.trim()
+                    ? selected.highlights
+                        .split(/\r?\n/)
+                        .map((v) => v.trim())
+                        .filter(Boolean)
+                    : [
+                        selected.tag,
+                        selected.subtitle,
+                        `Embalagem de ${selected.weight}`,
+                      ].filter(Boolean)
+                  ).map((v, i) => (
+                    <li key={i}>{v}</li>
+                  ))}
+                </ul>
+              </section>
+              {selected.usage?.trim() && (
+                <section className="product-information">
+                  <h3>Como usar ou consumir</h3>
+                  <p>{selected.usage}</p>
+                </section>
+              )}
+              <section className="product-information">
+                <h3>Ingredientes e cuidados</h3>
+                {selected.ingredients && <p>{selected.ingredients}</p>}
                 <small>
                   Confira os ingredientes no rótulo e a disponibilidade com a
                   loja.
                 </small>
-              </details>
+              </section>
             </div>
           </div>
+          {products.some(
+            (p) => p.category === selected.category && p.id !== selected.id,
+          ) && (
+            <section className="related-products">
+              <h3>Você também pode gostar</h3>
+              <div>
+                {products
+                  .filter(
+                    (p) =>
+                      p.category === selected.category && p.id !== selected.id,
+                  )
+                  .slice(0, 3)
+                  .map((p) => (
+                    <button key={p.id} onClick={() => setSelected(p)}>
+                      <img src={p.image} alt="" loading="lazy" />
+                      <span>
+                        {p.name}
+                        <small>{p.weight}</small>
+                        <b>{money(sellingPrice(p))}</b>
+                      </span>
+                    </button>
+                  ))}
+              </div>
+            </section>
+          )}
         </Modal>
       )}
       {cartOpen && (
@@ -1788,6 +2081,7 @@ export default function Nativa() {
                 <input
                   name="name"
                   autoComplete="name"
+                  defaultValue={shopUser?.name || ""}
                   required
                   minLength={2}
                   maxLength={100}
@@ -1800,6 +2094,7 @@ export default function Nativa() {
                   name="phone"
                   type="tel"
                   autoComplete="tel"
+                  defaultValue={shopUser?.phone || ""}
                   required
                   pattern="[0-9 ()+\-]{10,20}"
                   maxLength={20}

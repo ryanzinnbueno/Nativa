@@ -18,6 +18,8 @@ import { TrashAction } from "./trash-panel";
 import { sellingPrice } from "../lib/pricing";
 type Product = (typeof examples)[number] & {
   sale_price?: number | null;
+  highlights?: string;
+  usage?: string;
   active: boolean;
   position: number;
 };
@@ -103,6 +105,8 @@ export function CatalogPanel({
             tag: "",
             description: "",
             ingredients: "",
+            highlights: "",
+            usage: "",
             active: true,
             position: data?.products.length || 0,
           }
@@ -300,6 +304,36 @@ export function CatalogPanel({
                   </label>
                   {field("tag", "Destaque curto", false, 60)}
                   {field("ingredients", "Ingredientes e cuidados", false, 2000)}
+                  <label>
+                    Destaques do produto
+                    <textarea
+                      maxLength={1000}
+                      rows={4}
+                      value={(item as Product).highlights || ""}
+                      onChange={(e) =>
+                        setItem({
+                          ...item,
+                          highlights: e.target.value,
+                        } as Product)
+                      }
+                      placeholder="Escreva um destaque por linha"
+                    />
+                    <small>
+                      Inclua características reais do produto, uma por linha.
+                    </small>
+                  </label>
+                  <label>
+                    Como usar ou consumir
+                    <textarea
+                      maxLength={1200}
+                      rows={4}
+                      value={(item as Product).usage || ""}
+                      onChange={(e) =>
+                        setItem({ ...item, usage: e.target.value } as Product)
+                      }
+                      placeholder="Sugestões de preparo e uso (opcional)"
+                    />
+                  </label>
                 </>
               ) : (
                 <>

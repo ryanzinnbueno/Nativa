@@ -59,6 +59,10 @@ export function validateProduct(b: Record<string, unknown>) {
     image: imageAddress(b.image),
     description: text(b.description, 2000),
     ingredients: text(b.ingredients, 2000),
+    ...(b.highlights !== undefined
+      ? { highlights: text(b.highlights, 1000) }
+      : {}),
+    ...(b.usage !== undefined ? { usage: text(b.usage, 1200) } : {}),
   };
 }
 export function validateCategory(b: Record<string, unknown>) {

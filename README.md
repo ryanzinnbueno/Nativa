@@ -98,3 +98,11 @@ Referências: [Supabase SSR](https://supabase.com/docs/guides/auth/server-side/c
 
 A migração 006 (`supabase/migrations/202610070006_banner_image_settings.sql`) adiciona o enquadramento das imagens dos banners. Aplicar antes desta versão. Em Banners, ajuste separadamente Celular e Computador: imagem inteira ou preencher, zoom e posição horizontal/vertical. É possível enviar uma arte diferente para celular. A prévia muda ao ajustar e só vai para a loja depois de Salvar alterações. Banners antigos mantêm o enquadramento padrão.
 Em Apresentação por tela, selecione Celular ou Computador e escolha Imagem, título e botão ou Somente imagem e botão para cada um. É possível usar texto apenas no computador e uma arte pronta com botão no celular. Os textos são preservados ao trocar os formatos. A atualização usa a migração 006 já aplicada, sem nova alteração no banco.
+
+Ofertas e cadastro rápido (migração 007): aplique `supabase/migrations/202610090007_promotions.sql` antes de publicar. A vitrine Ofertas e o filtro Só ofertas mostram somente preços promocionais válidos. A barra de pesquisa do topo busca nomes, complementos e categorias, com ou sem acentos.
+
+Em Promoções no painel, configure o aviso: ativação, título, mensagem, botão e imagem opcional. O aviso aparece após seis segundos, uma vez por sessão e configuração, somente se houver ofertas, sem interromper carrinho, cadastro ou checkout.
+
+Meu cadastro é opcional, sem SMS e sem senha, conforme solicitado. Guarda nome e telefone apenas no navegador deste aparelho e preenche o checkout. É um cadastro rápido, não uma sessão autenticada: não consulta histórico, dados de outros clientes ou acesso administrativo pelo telefone. É possível editar ou remover pelo botão Sair e remover deste aparelho. A autenticação do administrador continua separada e obrigatória.
+
+As fichas dos produtos exibem destaques, ingredientes e sugestões de uso, com itens relacionados. Preencha os novos campos em Produtos > Editar. A migração 202610090008_product_details.sql adiciona esses campos sem alterar os produtos existentes.

@@ -41,23 +41,19 @@ export function Offers({
           {products.slice(0, 8).map((p) => (
             <article className="offer-card" key={p.id}>
               <button
-                className="offer-image"
-                aria-label={`Ver oferta de ${p.name}`}
+                className="card-open"
+                aria-label={`Abrir oferta de ${p.name}`}
                 onClick={() => onProduct(p.id)}
-              >
+              />
+              <div className="offer-image">
                 <img src={p.image} alt={p.name} loading="lazy" />
                 <span>
                   <Tag size={13} />
                   Em oferta
                 </span>
-              </button>
+              </div>
               <div className="offer-content">
-                <button
-                  className="product-name"
-                  onClick={() => onProduct(p.id)}
-                >
-                  {p.name}
-                </button>
+                <h3 className="product-name">{p.name}</h3>
                 <small>{p.weight}</small>
                 <del>{money(p.price)}</del>
                 <strong>{money(sellingPrice(p))}</strong>

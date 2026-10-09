@@ -131,11 +131,13 @@ function Modal({
   close,
   title,
   wide = false,
+  className = "",
 }: {
   children: React.ReactNode;
   close: () => void;
   title: string;
   wide?: boolean;
+  className?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const previous = useRef<HTMLElement | null>(null);
@@ -192,7 +194,7 @@ function Modal({
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className={"modal " + (wide ? "wide" : "")}
+        className={"modal " + (wide ? "wide " : "") + className}
       >
         <div className="modal-head">
           <h2>{title}</h2>
@@ -1037,12 +1039,13 @@ export default function Nativa() {
                   key={p.id}
                   style={{ animationDelay: `${i * 65}ms` }}
                 >
+                  <button
+                    className="card-open"
+                    onClick={() => setSelected(p)}
+                    aria-label={`Abrir ${p.name}`}
+                  />
                   <div className={"product-photo product-" + p.id}>
-                    <button
-                      className="product-view"
-                      onClick={() => setSelected(p)}
-                      aria-label={`Ver ${p.name}`}
-                    >
+                    <div className="product-view">
                       <img
                         src={p.image}
                         alt={p.name}
@@ -1051,7 +1054,7 @@ export default function Nativa() {
                           e.currentTarget.src = "/images/mix.jpg";
                         }}
                       />
-                    </button>
+                    </div>
                     <span className="product-tag">{p.tag}</span>
                     {p.sale_price != null && (
                       <span className="sale-badge">Em oferta</span>
@@ -1070,19 +1073,8 @@ export default function Nativa() {
                   </div>
                   <div className="product-content">
                     <small className="product-category">{p.category}</small>
-                    <button
-                      className="product-name"
-                      onClick={() => setSelected(p)}
-                    >
-                      {p.name}
-                    </button>
+                    <h3 className="product-name">{p.name}</h3>
                     <p>{p.subtitle}</p>
-                    <button
-                      className="product-details-link"
-                      onClick={() => setSelected(p)}
-                    >
-                      Ver detalhes
-                    </button>
                     <div className="product-bottom">
                       <div>
                         <small>{p.weight}</small>
@@ -1823,35 +1815,67 @@ export default function Nativa() {
         !cartOpen &&
         !checkout &&
         !selected && (
-          <Modal title={promotion.title} close={dismissPromotion}>
+          <Modal
+            title={promotion.title}
+            close={dismissPromotion}
+            className="promotion-modal"
+          >
             <div className="promotion-notice">
-              {promotion.image && (
-                <img src={promotion.image} alt="Seleção de ofertas da Nativa" />
-              )}
-              <p>{promotion.message}</p>
-              <span>
-                {offerProducts.length}{" "}
-                {offerProducts.length === 1
-                  ? "produto em oferta"
-                  : "produtos em oferta"}
-              </span>
-              <button
-                className="primary full"
-                onClick={() => {
-                  dismissPromotion();
-                  openOffers();
-                }}
-              >
-                {promotion.cta}
-              </button>
-              <button className="text-button full" onClick={dismissPromotion}>
-                Agora não
-              </button>
+              <div className="promotion-visual">
+                <img
+                  src={promotion.image || offerProducts[0].image}
+                  alt={
+                    promotion.image
+                      ? "Seleção de ofertas da Nativa"
+                      : offerProducts[0].name
+                  }
+                />
+                <span className="promotion-brand">
+                  <Leaf size={16} /> nativa <small>BEM VIVER</small>
+                </span>
+                <span className="promotion-sticker">
+                  Escolhas
+                  <br />
+                  especiais <Leaf size={19} />
+                </span>
+              </div>
+              <div className="promotion-copy">
+                <span className="promotion-eyebrow">
+                  UM CONVITE PARA BEM VIVER
+                </span>
+                <h2>{promotion.title}</h2>
+                <p>{promotion.message}</p>
+                <span className="promotion-count">
+                  <Tag size={14} />
+                  {offerProducts.length}{" "}
+                  {offerProducts.length === 1
+                    ? "produto em oferta"
+                    : "produtos em oferta"}
+                </span>
+                <button
+                  className="primary full"
+                  onClick={() => {
+                    dismissPromotion();
+                    openOffers();
+                  }}
+                >
+                  {promotion.cta}
+                  <ArrowUpRight size={18} />
+                </button>
+                <button className="text-button full" onClick={dismissPromotion}>
+                  Continuar explorando
+                </button>
+              </div>
             </div>
           </Modal>
         )}
       {selected && (
-        <Modal key={selected.id} close={() => setSelected(null)} title={selected.name} wide>
+        <Modal
+          key={selected.id}
+          close={() => setSelected(null)}
+          title={selected.name}
+          wide
+        >
           <div className="product-detail">
             <img src={selected.image} alt={selected.name} />
             <div>

@@ -24,7 +24,7 @@ export async function POST(request: Request) {
     if (allowed !== true || roleError) {
       await client.auth.signOut({ scope: "local" });
       return reply(
-        { error: "Esta conta não tem acesso à Área da Nativa." },
+        { error: "Esta conta não tem acesso à Área da Verdeva." },
         403,
       );
     }

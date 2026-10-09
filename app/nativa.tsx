@@ -10,10 +10,13 @@ import {
   defaultPromotion,
   isOffer,
   searchMatches,
-  brazilPhone,
   type Promotion,
 } from "../lib/shop-features";
-import { CustomerAccount, type ShopUser } from "./customer-account";
+import {
+  CustomerAccount,
+  type ShopUser,
+  type AccountMode,
+} from "./customer-account";
 import { PromotionsPanel } from "./promotions-panel";
 import { Offers } from "./offers";
 import { useEffect, useState, useRef, useCallback, FormEvent } from "react";
@@ -40,7 +43,6 @@ import {
   ArrowUpRight,
   Download,
   Settings,
-  Camera as Instagram,
   CheckCircle2,
   ShoppingBasket,
   Flower2,
@@ -212,12 +214,12 @@ function Logo() {
     <span className="logo">
       <Leaf size={30} strokeWidth={1.4} />
       <span>
-        nativa<small>BEM VIVER</small>
+        verdeva<small>PRODUTOS NATURAIS</small>
       </span>
     </span>
   );
 }
-export default function Nativa() {
+export default function Verdeva() {
   const [view, setView] = useState("loja"),
     [category, setCategory] = useState("Todos"),
     [search, setSearch] = useState(""),
@@ -263,6 +265,7 @@ export default function Nativa() {
   const [storeCategories, setStoreCategories] = useState(defaultCategories);
   const [offersOnly, setOffersOnly] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
+  const [accountMode, setAccountMode] = useState<AccountMode>("login");
   const [shopUser, setShopUser] = useState<ShopUser | null>(null);
   const [promotion, setPromotion] = useState<Promotion>(defaultPromotion);
   const [promotionOpen, setPromotionOpen] = useState(false);
@@ -270,25 +273,34 @@ export default function Nativa() {
   const promoKey = JSON.stringify(promotion);
   useEffect(() => {
     let cancelled = false;
-    void Promise.resolve().then(() => {
-      try {
-        const saved = JSON.parse(
-          localStorage.getItem("nativa-cadastro-rapido") || "null",
-        );
-        if (
-          !cancelled &&
-          saved &&
-          typeof saved.name === "string" &&
-          saved.name.trim().length >= 2 &&
-          saved.name.length <= 100
-        )
-          setShopUser({ name: saved.name, phone: brazilPhone(saved.phone) });
-      } catch {}
-    });
+    void fetch("/api/customer-auth")
+      .then(async (r) => {
+        const d = await r.json();
+        if (cancelled) return;
+        if (r.ok && d.user) {
+          setShopUser(d.user);
+          return;
+        }
+        try {
+          if (!localStorage.getItem("nativa-boas-vindas")) {
+            setAccountMode("welcome");
+            setAccountOpen(true);
+          }
+        } catch {}
+      })
+      .catch(() => {});
     return () => {
       cancelled = true;
     };
   }, []);
+  const closeAccount = () => {
+    setAccountOpen(false);
+    setAccountMode("login");
+    try {
+      localStorage.setItem("nativa-boas-vindas", "1");
+      localStorage.removeItem("nativa-cadastro-rapido");
+    } catch {}
+  };
   useEffect(() => {
     if (
       !cartReady ||
@@ -594,10 +606,11 @@ export default function Nativa() {
       items: cart,
       channel,
       requestKey: requestKey.current,
+      accountOrder: !!shopUser,
     };
     try {
       const result = await api<OrderResult>("POST", data);
-      const message = `Olá, Nativa! Meu pedido #${result.id.slice(0, 8).toUpperCase()}:\n\n${result.items.map((i) => `${i.qty}x ${i.name} (${i.weight}) — ${money(i.price * i.qty)}`).join("\n")}\n\nSubtotal: ${money(result.total)}\nNome: ${data.name}\nTelefone: ${data.phone}\n${delivery}${data.address ? ": " + data.address : ""}\nPagamento: ${data.payment}\n${data.notes ? "Observações: " + data.notes : ""}\nEntrega e disponibilidade a confirmar.`;
+      const message = `Olá, Verdeva! Meu pedido #${result.id.slice(0, 8).toUpperCase()}:\n\n${result.items.map((i) => `${i.qty}x ${i.name} (${i.weight}) — ${money(i.price * i.qty)}`).join("\n")}\n\nSubtotal: ${money(result.total)}\nNome: ${data.name}\nTelefone: ${data.phone}\n${delivery}${data.address ? ": " + data.address : ""}\nPagamento: ${data.payment}\n${data.notes ? "Observações: " + data.notes : ""}\nEntrega e disponibilidade a confirmar.`;
       setSuccess({
         ...result,
         channel,
@@ -660,7 +673,7 @@ export default function Nativa() {
       setCurrentOrder(null);
       setCurrentCustomer(null);
       setLoadError("");
-      notify("Você saiu da Área da Nativa");
+      notify("Você saiu da Área da Verdeva");
     } catch (e) {
       notify((e as Error).message);
     }
@@ -685,14 +698,14 @@ export default function Nativa() {
       <div className="announcement">
         <Leaf size={14} />
         <span>Pequenas escolhas. Uma vida mais natural.</span>
-        <span className="announcement-right">Conheça a Nativa</span>
+        <span className="announcement-right">Conheça a Verdeva</span>
       </div>
       <header className="header">
         <div className="header-inner">
           <button
             className="brand-button"
             onClick={shop}
-            aria-label="Nativa início"
+            aria-label="Verdeva início"
           >
             <Logo />
           </button>
@@ -702,25 +715,18 @@ export default function Nativa() {
             </button>
             <button onClick={about}>Sobre nós</button>
             <button onClick={openOffers}>Ofertas</button>
-            <a
-              href="https://www.instagram.com/nativabemviver/"
-              target="_blank"
-              rel="noreferrer"
-            >
-              Instagram <ArrowUpRight size={13} />
-            </a>
           </nav>
           <div className="header-actions">
             <button
               className="icon-btn"
-              aria-label="Meu cadastro"
+              aria-label="Minha conta"
               onClick={() => setAccountOpen(true)}
             >
               <UserRound size={21} />
             </button>
             <button className="crm-link" onClick={openCRM}>
               <LayoutDashboard size={17} />
-              Área da Nativa
+              Área da Verdeva
             </button>
             <button
               className="icon-btn favorites-button"
@@ -768,10 +774,10 @@ export default function Nativa() {
                 setAccountOpen(true);
               }}
             >
-              Meu cadastro
+              Minha conta
             </button>
             <button onClick={about}>Sobre nós</button>
-            <button onClick={openCRM}>Área da Nativa</button>
+            <button onClick={openCRM}>Área da Verdeva</button>
           </nav>
         )}
         {view === "loja" && (
@@ -1136,7 +1142,7 @@ export default function Nativa() {
               </div>
             </div>
             <div className="about-copy">
-              <span className="eyebrow">PRAZER, SOMOS A NATIVA</span>
+              <span className="eyebrow">PRAZER, SOMOS A VERDEVA</span>
               <h2>
                 Natural é viver
                 <br />
@@ -1148,19 +1154,10 @@ export default function Nativa() {
                 mesa.
               </p>
               <p>
-                A Nativa é um convite para fazer escolhas mais naturais, no seu
+                A Verdeva é um convite para fazer escolhas mais naturais, no seu
                 ritmo. Explore nossa seleção e encontre o que combina com sua
                 rotina.
               </p>
-              <a
-                className="about-social"
-                href="https://www.instagram.com/nativabemviver/"
-                target="_blank"
-                rel="noreferrer"
-              >
-                <Instagram size={19} />
-                @nativabemviver <ArrowUpRight size={17} />
-              </a>
               <small className="draft-note">
                 Escolhas naturais para acompanhar seu dia.
               </small>
@@ -1190,7 +1187,7 @@ export default function Nativa() {
         <main className="admin-login">
           <div className="settings-card">
             <ShieldCheck size={30} />
-            <span className="eyebrow">ÁREA DA NATIVA</span>
+            <span className="eyebrow">ÁREA DA VERDEVA</span>
             <h1>Cuidar do negócio.</h1>
             <p>
               Entre com sua conta de administrador para acompanhar pedidos e
@@ -1225,7 +1222,7 @@ export default function Nativa() {
               <button className="primary full" disabled={loginBusy || loading}>
                 {loginBusy || loading
                   ? "Entrando…"
-                  : "Entrar na Área da Nativa"}
+                  : "Entrar na Área da Verdeva"}
               </button>
             </form>
             <button className="text-button" onClick={shop}>
@@ -1237,7 +1234,7 @@ export default function Nativa() {
         <main className="crm">
           <aside className="crm-sidebar">
             <div>
-              <span className="eyebrow">ÁREA DA NATIVA</span>
+              <span className="eyebrow">ÁREA DA VERDEVA</span>
               <h2>
                 Um cuidado
                 <br />
@@ -1272,7 +1269,7 @@ export default function Nativa() {
             <div className="crm-sidebar-bottom">
               <ShieldCheck size={20} />
               <span>
-                Acesso restrito<small>Gestão da Nativa</small>
+                Acesso restrito<small>Gestão da Verdeva</small>
               </span>
             </div>
           </aside>
@@ -1280,7 +1277,7 @@ export default function Nativa() {
             <div className="crm-heading">
               <div>
                 <span className="eyebrow">
-                  NATIVA /{" "}
+                  VERDEVA /{" "}
                   {tab === "overview"
                     ? "VISÃO GERAL"
                     : tab === "orders"
@@ -1329,7 +1326,7 @@ export default function Nativa() {
                       ? "Da primeira escolha até a entrega."
                       : tab === "customers"
                         ? "Conheça seus clientes e mantenha o atendimento próximo."
-                        : "Prepare o atendimento da Nativa."}
+                        : "Prepare o atendimento da Verdeva."}
                 </p>
               </div>
               <div className="admin-actions">
@@ -1470,7 +1467,7 @@ export default function Nativa() {
                     <p>
                       {phone
                         ? "Seu WhatsApp está pronto para receber os pedidos."
-                        : "Adicione o WhatsApp da Nativa para receber a sacola pronta na conversa."}
+                        : "Adicione o WhatsApp da Verdeva para receber a sacola pronta na conversa."}
                     </p>
                   </div>
                   <button
@@ -1656,7 +1653,7 @@ export default function Nativa() {
             {tab === "settings" && (
               <div className="settings-card">
                 <MessageCircle size={30} />
-                <h2>WhatsApp da Nativa</h2>
+                <h2>WhatsApp da Verdeva</h2>
                 <p>
                   Os clientes podem continuar o pedido com uma mensagem que já
                   inclui os produtos e os dados de entrega.
@@ -1705,21 +1702,13 @@ export default function Nativa() {
           <p>O natural faz parte de você.</p>
           <div>
             <button onClick={about}>Sobre nós</button>
-            <a
-              href="https://www.instagram.com/nativabemviver/"
-              target="_blank"
-              rel="noreferrer"
-            >
-              <Instagram size={18} />
-              Instagram
-            </a>
-            <button onClick={openCRM}>Área da Nativa</button>
+            <button onClick={openCRM}>Área da Verdeva</button>
             <button onClick={openOffers}>Ofertas</button>
-            <button onClick={() => setAccountOpen(true)}>Meu cadastro</button>
+            <button onClick={() => setAccountOpen(true)}>Minha conta</button>
           </div>
         </div>
         <div className="footer-bottom">
-          <span>© 2026 Nativa Bem Viver</span>
+          <span>© 2026 Verdeva</span>
           <span>Confirme valores e disponibilidade com a loja.</span>
         </div>
         <div className="image-credits">
@@ -1761,7 +1750,7 @@ export default function Nativa() {
           </button>
           <button onClick={about}>
             <Leaf size={20} />
-            <span>A Nativa</span>
+            <span>A Verdeva</span>
           </button>
           <button onClick={() => setCartOpen(true)}>
             <span className="mobile-bag">
@@ -1798,11 +1787,18 @@ export default function Nativa() {
         </div>
       )}
       {accountOpen && (
-        <Modal title="Meu cadastro" close={() => setAccountOpen(false)}>
+        <Modal
+          title={shopUser ? "Minha conta" : "Bem-vindo à Verdeva"}
+          close={closeAccount}
+          className={
+            accountMode === "welcome" && !shopUser ? "welcome-modal" : ""
+          }
+        >
           <CustomerAccount
             user={shopUser}
             onUser={setShopUser}
-            close={() => setAccountOpen(false)}
+            close={closeAccount}
+            initialMode={accountMode}
           />
         </Modal>
       )}
@@ -1826,12 +1822,12 @@ export default function Nativa() {
                   src={promotion.image || offerProducts[0].image}
                   alt={
                     promotion.image
-                      ? "Seleção de ofertas da Nativa"
+                      ? "Seleção de ofertas da Verdeva"
                       : offerProducts[0].name
                   }
                 />
                 <span className="promotion-brand">
-                  <Leaf size={16} /> nativa <small>BEM VIVER</small>
+                  <Leaf size={16} /> verdeva <small>NATURAL</small>
                 </span>
                 <span className="promotion-sticker">
                   Escolhas
@@ -2054,7 +2050,7 @@ export default function Nativa() {
               <p>
                 {success.channel === "WhatsApp"
                   ? "Continue no WhatsApp para enviar sua mensagem à loja."
-                  : "Recebemos seu pedido! A Nativa vai confirmar os próximos passos com você."}
+                  : "Recebemos seu pedido! A Verdeva vai confirmar os próximos passos com você."}
               </p>
               <small>
                 Nenhum pagamento foi cobrado. Entrega e disponibilidade a
@@ -2208,7 +2204,7 @@ export default function Nativa() {
               </button>
               {!phone && (
                 <small className="center">
-                  Para falar com a Nativa, finalize seu pedido pelo site.
+                  Para falar com a Verdeva, finalize seu pedido pelo site.
                 </small>
               )}
             </form>

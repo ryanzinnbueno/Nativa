@@ -85,12 +85,12 @@ export function createOrderReport(
     doc.setPage(page);
     doc.setFontSize(8);
     doc.setTextColor(100);
-    doc.text("Nativa Bem Viver | Uso interno - dados de clientes", 14, 286);
+    doc.text("Verdeva Bem Viver | Uso interno - dados de clientes", 14, 286);
     doc.text(`${page} / ${pages}`, 196, 286, { align: "right" });
   }
   doc.setProperties({
-    title: "Nativa - Relatório de pedidos",
-    author: "Nativa Bem Viver",
+    title: "Verdeva - Relatório de pedidos",
+    author: "Verdeva Bem Viver",
   });
   return doc;
 }

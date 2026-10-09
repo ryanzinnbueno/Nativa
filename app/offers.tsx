@@ -30,7 +30,7 @@ export function Offers({
       <div className="section-title">
         <div>
           <span className="eyebrow">ESCOLHAS QUE VALEM APROVEITAR</span>
-          <h2 id="offers-heading">Ofertas da Nativa.</h2>
+          <h2 id="offers-heading">Ofertas da Verdeva.</h2>
         </div>
         <button className="text-button" onClick={onAll}>
           Ver todas as ofertas →

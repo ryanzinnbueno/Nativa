@@ -1,5 +1,6 @@
 import { createClient, adminClient } from "../../../lib/supabase/server";
 import { reply, sameOrigin } from "../../../lib/supabase/http";
+import { brazilPhone } from "../../../lib/shop-features";
 import { statuses } from "../../catalog";
 export const dynamic = "force-dynamic";
 
@@ -11,7 +12,7 @@ export async function GET(request: Request) {
         return reply(
           {
             error:
-              "Entre com uma conta autorizada para acessar a área da Nativa.",
+              "Entre com uma conta autorizada para acessar a área da Verdeva.",
           },
           401,
         );
@@ -94,7 +95,26 @@ export async function POST(request: Request) {
     } catch {
       return reply({ error: "Dados inválidos." }, 400);
     }
+    try {
+      body.phone = brazilPhone(body.phone).slice(3);
+    } catch {
+      return reply({ error: "Informe seu telefone com DDD." }, 400);
+    }
     const client = await createClient();
+    if (body.accountOrder === true) {
+      const {
+        data: { user },
+        error: authError,
+      } = await client.auth.getUser();
+      if (authError || !user?.phone)
+        return reply(
+          {
+            error:
+              "Sua sessão expirou. Entre novamente para guardar o pedido na sua conta.",
+          },
+          401,
+        );
+    }
     const { data, error } = await client.rpc("nativa_place_order", {
       payload: body,
     });
@@ -122,7 +142,7 @@ export async function PATCH(request: Request) {
       return reply(
         {
           error:
-            "Entre com uma conta autorizada para acessar a área da Nativa.",
+            "Entre com uma conta autorizada para acessar a área da Verdeva.",
         },
         401,
       );

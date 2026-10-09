@@ -1,2 +1,2 @@
-import Nativa from './nativa';
-export default function Page() { return <Nativa/>; }
+import Verdeva from './nativa';
+export default function Page() { return <Verdeva/>; }

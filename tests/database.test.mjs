@@ -88,7 +88,24 @@ before(async () => {
       "utf8",
     ),
   );
-  await db.exec(await readFile(new URL("../supabase/migrations/202610090008_product_details.sql", import.meta.url), "utf8"));
+  await db.exec(
+    await readFile(
+      new URL(
+        "../supabase/migrations/202610090008_product_details.sql",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+  );
+  await db.exec(
+    await readFile(
+      new URL(
+        "../supabase/migrations/202610090009_customer_accounts.sql",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+  );
 });
 after(async () => {
   await db?.close();
@@ -615,12 +632,98 @@ test("promotion settings are public, while updates stay restricted to administra
 });
 
 test("product details preserve admin-only editing and reject excessive content", async () => {
-  await as("authenticated", admin, () => db.query("update nativa_products set highlights=$1,usage=$2 where id='caju'", ["Torrada\nSem sal", "Sugestão de uso informada pela loja"]));
-  await as("authenticated", outsider, () => db.exec("update nativa_products set highlights='alterado' where id='caju'"));
+  await as("authenticated", admin, () =>
+    db.query(
+      "update nativa_products set highlights=$1,usage=$2 where id='caju'",
+      ["Torrada\nSem sal", "Sugestão de uso informada pela loja"],
+    ),
+  );
+  await as("authenticated", outsider, () =>
+    db.exec("update nativa_products set highlights='alterado' where id='caju'"),
+  );
   await as("anon", null, async () => {
-    const row = (await db.query("select highlights,usage from nativa_products where id='caju'")).rows[0];
+    const row = (
+      await db.query(
+        "select highlights,usage from nativa_products where id='caju'",
+      )
+    ).rows[0];
     assert.equal(row.highlights, "Torrada\nSem sal");
     assert.equal(row.usage, "Sugestão de uso informada pela loja");
   });
-  await as("authenticated", admin, () => assert.rejects(db.query("update nativa_products set highlights=$1 where id='caju'", ["x".repeat(1001)])));
+  await as("authenticated", admin, () =>
+    assert.rejects(
+      db.query("update nativa_products set highlights=$1 where id='caju'", [
+        "x".repeat(1001),
+      ]),
+    ),
+  );
+});
+
+test("customer sessions see only their own orders, never guest history for the same phone", async () => {
+  const other = "10000000-0000-4000-8000-000000000003";
+  await db.query("insert into auth.users(id) values($1)", [other]);
+  const buyer = order("account-order-001", {
+    phone: "71999990001",
+    account_id: other,
+  });
+  const own = await as("authenticated", outsider, () => place(buyer));
+  const guest = await as("anon", null, () =>
+    place(order("account-guest-001", { phone: "71999990001" })),
+  );
+  const second = await as("authenticated", other, () =>
+    place(order("account-order-002", { phone: "71999990001" })),
+  );
+  assert.equal(
+    (
+      await db.query("select account_id from nativa_orders where id=$1", [
+        own.id,
+      ])
+    ).rows[0].account_id,
+    outsider,
+  );
+  await as("authenticated", outsider, async () => {
+    const rows = (await db.query("select id from nativa_orders")).rows.map(
+      (r) => r.id,
+    );
+    assert.deepEqual(rows, [own.id]);
+    assert.equal(
+      (await db.query("select id from nativa_customers")).rows.length,
+      0,
+    );
+    await db.query("update nativa_orders set status='Cancelado' where id=$1", [
+      own.id,
+    ]);
+  });
+  assert.equal(
+    (await db.query("select status from nativa_orders where id=$1", [own.id]))
+      .rows[0].status,
+    "Novo",
+  );
+  await as("authenticated", other, async () =>
+    assert.deepEqual(
+      (await db.query("select id from nativa_orders")).rows.map((r) => r.id),
+      [second.id],
+    ),
+  );
+  await as("anon", null, () => assert.rejects(db.query("select id from nativa_orders"), /permission denied/));
+  await as("authenticated", other, () =>
+    assert.rejects(place(buyer), /pedido mudou/),
+  );
+  await db.query("update nativa_orders set deleted_at=now() where id=$1", [
+    own.id,
+  ]);
+  await as("authenticated", outsider, async () =>
+    assert.equal(
+      (await db.query("select id from nativa_orders")).rows.length,
+      0,
+    ),
+  );
+  assert.equal(
+    (
+      await db.query("select account_id from nativa_orders where id=$1", [
+        guest.id,
+      ])
+    ).rows[0].account_id,
+    null,
+  );
 });

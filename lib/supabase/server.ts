@@ -8,6 +8,11 @@ export async function createClient() {
   if (!url || !key) throw new Error("SUPABASE_NOT_CONFIGURED");
   const jar = await cookies();
   return createServerClient(url, key, {
+    cookieOptions: {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+    },
     cookies: {
       getAll: () => jar.getAll(),
       setAll: (values) =>

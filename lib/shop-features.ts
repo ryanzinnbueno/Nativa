@@ -6,11 +6,16 @@ export const defaultPromotion = {
   image: "",
 };
 export type Promotion = typeof defaultPromotion;
-export function isOffer(p: { price: number; sale_price?: number | null }) {
+export function isOffer(p: {
+  price: number;
+  sale_price?: number | null;
+  variants?: { price: number; sale_price?: number | null }[];
+}): boolean {
   return (
-    typeof p.sale_price === "number" &&
-    p.sale_price > 0 &&
-    p.sale_price < p.price
+    !!p.variants?.some((v) => isOffer(v)) ||
+    (typeof p.sale_price === "number" &&
+      p.sale_price > 0 &&
+      p.sale_price < p.price)
   );
 }
 export function searchMatches(

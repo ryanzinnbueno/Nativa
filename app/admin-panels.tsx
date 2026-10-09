@@ -6,6 +6,8 @@ import {
   Image as ImageIcon,
   Package,
   Check,
+  Search,
+  X,
 } from "lucide-react";
 import { products as examples, money, statuses } from "./catalog";
 import { Banner, defaultBanners } from "./banner-data";
@@ -21,14 +23,19 @@ import {
   type ProductImageSettings,
 } from "../lib/product-image";
 import { sellingPrice } from "../lib/pricing";
-type Product = (typeof examples)[number] & {
-  image_settings?: ProductImageSettings | null;
-  sale_price?: number | null;
-  highlights?: string;
-  usage?: string;
-  active: boolean;
-  position: number;
-};
+import { searchMatches } from "../lib/shop-features";
+import { ProductShare } from "./product-share";
+import { ProductExtrasEditor } from "./product-extras-editor";
+import type { ProductExtras } from "../lib/product-options";
+type Product = (typeof examples)[number] &
+  ProductExtras & {
+    image_settings?: ProductImageSettings | null;
+    sale_price?: number | null;
+    highlights?: string;
+    usage?: string;
+    active: boolean;
+    position: number;
+  };
 type Settings = {
   phone: string;
   banner_seconds: number;
@@ -68,6 +75,7 @@ export function CatalogPanel({
   const [item, setItem] = useState<Product | Banner | null>(null),
     [isNew, setIsNew] = useState(false);
   const [uploadBusy, setUploadBusy] = useState(false);
+  const [catalogSearch, setCatalogSearch] = useState("");
   const load = async () => {
     setError("");
     try {
@@ -90,6 +98,10 @@ export function CatalogPanel({
     };
   }, []);
   const items = kind === "product" ? data?.products : data?.banners;
+  const visibleItems = items?.filter(
+    (p) =>
+      kind !== "product" || ("name" in p && searchMatches(p, catalogSearch)),
+  );
   const edit = (value: Product | Banner, newItem = false) => {
     setSaved("");
     setError("");
@@ -202,6 +214,31 @@ export function CatalogPanel({
         </p>
       )}
       {!data && !error && <p role="status">Carregando…</p>}
+      {kind === "product" && data && !item && (
+        <div className="catalog-management-search">
+          <label className="search">
+            <Search size={18} />
+            <input
+              aria-label="Buscar produtos cadastrados"
+              placeholder="Buscar por nome ou categoria"
+              value={catalogSearch}
+              onChange={(e) => setCatalogSearch(e.target.value)}
+            />
+            {catalogSearch && (
+              <button
+                type="button"
+                aria-label="Limpar busca de produtos"
+                onClick={() => setCatalogSearch("")}
+              >
+                <X size={17} />
+              </button>
+            )}
+          </label>
+          <small role="status">
+            {visibleItems?.length} de {data.products.length} produtos
+          </small>
+        </div>
+      )}
       {item ? (
         <form key={item.id} className="editor-card" onSubmit={submit}>
           <div className="editor-title">
@@ -326,6 +363,13 @@ export function CatalogPanel({
                       usado no pedido.
                     </small>
                   </label>
+                  <ProductExtrasEditor
+                    product={item as Product}
+                    onChange={(extras) =>
+                      setItem({ ...item, ...extras } as Product)
+                    }
+                    onBusy={setUploadBusy}
+                  />
                   {field("tag", "Destaque curto", false, 60)}
                   <details className="editor-extra-information">
                     <summary>Informações adicionais (opcional)</summary>
@@ -451,6 +495,23 @@ export function CatalogPanel({
                 </label>
               </div>
               {kind === "product" && !isNew && (
+                <div className="saved-product-sharing">
+                  {data?.products.find((p) => p.id === item.id)?.active ? (
+                    <>
+                      <small>Compartilhe a versão salva deste produto.</small>
+                      <ProductShare
+                        product={data.products.find((p) => p.id === item.id)!}
+                      />
+                    </>
+                  ) : (
+                    <small>
+                      Salve o produto como visível para compartilhar o link na
+                      loja.
+                    </small>
+                  )}
+                </div>
+              )}
+              {kind === "product" && !isNew && (
                 <TrashAction
                   kind="product"
                   id={item.id}
@@ -500,34 +561,64 @@ export function CatalogPanel({
         </form>
       ) : (
         <div className="management-grid">
-          {items?.map((p) => (
-            <button
-              className="management-card"
-              key={p.id}
-              onClick={() => edit(p)}
-            >
-              <img src={p.image} alt="" />
-              <div>
-                <span
-                  className={"visibility-tag " + (p.active ? "active" : "")}
-                >
-                  {p.active ? "Visível" : "Oculto"}
-                </span>
-                <h3>
-                  {"name" in p
-                    ? p.name
-                    : p.image_only
-                      ? "Banner em imagem"
-                      : p.heading + " " + p.heading_accent}
-                </h3>
-                <p>
-                  {p.category}
-                  {"price" in p ? " · " + money(sellingPrice(p)) : ""}
-                </p>
-                <small>Ordem {p.position} · Editar</small>
-              </div>
-            </button>
+          {visibleItems?.map((p) => (
+            <article className="management-item" key={p.id}>
+              <button
+                className="management-card"
+                key={p.id}
+                onClick={() => edit(p)}
+              >
+                <img src={p.image} alt="" />
+                <div>
+                  <span
+                    className={"visibility-tag " + (p.active ? "active" : "")}
+                  >
+                    {p.active ? "Visível" : "Oculto"}
+                  </span>
+                  <h3>
+                    {"name" in p
+                      ? p.name
+                      : p.image_only
+                        ? "Banner em imagem"
+                        : p.heading + " " + p.heading_accent}
+                  </h3>
+                  <p>
+                    {p.category}
+                    {"price" in p ? " · " + money(sellingPrice(p)) : ""}
+                  </p>
+                  <small>Ordem {p.position} · Editar</small>
+                </div>
+              </button>
+              {kind === "product" &&
+                "name" in p &&
+                (p.active ? (
+                  <ProductShare product={p} />
+                ) : (
+                  <small className="hidden-product-note">
+                    Produto oculto. Ative para compartilhar.
+                  </small>
+                ))}
+            </article>
           ))}
+          {kind === "product" && data && !visibleItems?.length && (
+            <div className="empty">
+              <Package size={28} />
+              <h3>
+                {catalogSearch
+                  ? "Nenhum produto encontrado."
+                  : "Nenhum produto cadastrado."}
+              </h3>
+              {catalogSearch && (
+                <button
+                  type="button"
+                  className="text-button"
+                  onClick={() => setCatalogSearch("")}
+                >
+                  Limpar busca
+                </button>
+              )}
+            </div>
+          )}
         </div>
       )}
       {kind === "banner" && data && (

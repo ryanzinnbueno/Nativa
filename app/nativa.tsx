@@ -1,6 +1,11 @@
 "use client";
 import { ProductImage } from "./product-image";
-import { ProductInformation } from "./product-information";
+import { ProductChoice } from "./product-choice";
+import {
+  cartKey,
+  optionProduct,
+  type ProductExtras,
+} from "../lib/product-options";
 import type { ProductImageSettings } from "../lib/product-image";
 import HeroCarousel from "./hero-carousel";
 import { defaultBanners, type Banner } from "./banner-data";
@@ -57,13 +62,14 @@ import {
   Tag,
 } from "lucide-react";
 import { products as demoProducts, money, statuses } from "./catalog";
-type Product = (typeof demoProducts)[number] & {
-  image_settings?: ProductImageSettings | null;
-  sale_price?: number | null;
-  highlights?: string;
-  usage?: string;
-};
-type CartItem = { id: string; qty: number };
+export type Product = (typeof demoProducts)[number] &
+  ProductExtras & {
+    image_settings?: ProductImageSettings | null;
+    sale_price?: number | null;
+    highlights?: string;
+    usage?: string;
+  };
+type CartItem = { id: string; qty: number; variant?: string };
 type Customer = {
   id: string;
   name: string;
@@ -80,6 +86,7 @@ type Order = {
     weight: string;
     price: number;
     qty: number;
+    variant?: string;
   }[];
   total: number;
   status: string;
@@ -224,7 +231,9 @@ function Logo() {
     </span>
   );
 }
-export default function VillaNatura() {
+export default function VillaNatura({
+  initialProduct,
+}: { initialProduct?: Product } = {}) {
   const [view, setView] = useState("loja"),
     [category, setCategory] = useState("Todos"),
     [search, setSearch] = useState(""),
@@ -232,7 +241,7 @@ export default function VillaNatura() {
     [cart, setCart] = useState<CartItem[]>([]),
     [favorite, setFavorite] = useState<string[]>([]),
     [favoriteOnly, setFavoriteOnly] = useState(false),
-    [selected, setSelected] = useState<Product | null>(null),
+    [selected, setSelected] = useState<Product | null>(initialProduct || null),
     [cartOpen, setCartOpen] = useState(false),
     [checkout, setCheckout] = useState(false),
     [toast, setToast] = useState(""),
@@ -259,7 +268,14 @@ export default function VillaNatura() {
     } | null>(null),
     [submitError, setSubmitError] = useState("");
   const [cartReady, setCartReady] = useState(false),
-    [products, setProducts] = useState<Product[]>(demoProducts),
+    [products, setProducts] = useState<Product[]>(
+      initialProduct
+        ? [
+            initialProduct,
+            ...demoProducts.filter((p) => p.id !== initialProduct.id),
+          ]
+        : demoProducts,
+    ),
     [admin, setAdmin] = useState(false),
     [loginError, setLoginError] = useState(""),
     [loginBusy, setLoginBusy] = useState(false);
@@ -287,7 +303,7 @@ export default function VillaNatura() {
           return;
         }
         try {
-          if (!localStorage.getItem("nativa-boas-vindas")) {
+          if (!initialProduct && !localStorage.getItem("nativa-boas-vindas")) {
             setAccountMode("welcome");
             setAccountOpen(true);
           }
@@ -297,7 +313,7 @@ export default function VillaNatura() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [initialProduct]);
   const closeAccount = () => {
     setAccountOpen(false);
     setAccountMode("login");
@@ -421,7 +437,15 @@ export default function VillaNatura() {
       setPromotion(d.promotion ?? defaultPromotion);
       setBannerSeconds(d.banner_seconds ?? 7);
       setBannerAutoplay(d.banner_autoplay ?? true);
-      setCart((c) => c.filter((i) => d.products.some((p) => p.id === i.id)));
+      setCart((c) =>
+        c.filter((i) =>
+          d.products.some(
+            (p) =>
+              p.id === i.id &&
+              (!i.variant || p.variants?.some((v) => v.id === i.variant)),
+          ),
+        ),
+      );
       setPhone(d.phone);
       setPhoneDraft(d.phone);
     } catch {
@@ -469,14 +493,18 @@ export default function VillaNatura() {
             if (
               !i ||
               typeof i.id !== "string" ||
-              seen.has(i.id) ||
-              !available.some((p) => p.id === i.id) ||
+              seen.has(cartKey(i)) ||
+              !available.some(
+                (p) =>
+                  p.id === i.id &&
+                  (!i.variant || p.variants?.some((v) => v.id === i.variant)),
+              ) ||
               !Number.isInteger(i.qty) ||
               i.qty < 1 ||
               i.qty > 99
             )
               return false;
-            seen.add(i.id);
+            seen.add(cartKey(i));
             return true;
           });
       } catch {}
@@ -495,21 +523,28 @@ export default function VillaNatura() {
       } catch {}
     }
   }, [cart, cartReady]);
-  const add = (p: Product) => {
+  const add = (p: Product, variant?: string) => {
+    if (p.variants?.length && variant === undefined) {
+      setSelected(p);
+      return;
+    }
+    const key = cartKey({ id: p.id, variant });
     if (!cartReady) return;
     setCart((c) =>
-      c.find((i) => i.id === p.id)
+      c.find((i) => cartKey(i) === key)
         ? c.map((i) =>
-            i.id === p.id ? { ...i, qty: Math.min(99, i.qty + 1) } : i,
+            cartKey(i) === key ? { ...i, qty: Math.min(99, i.qty + 1) } : i,
           )
-        : [...c, { id: p.id, qty: 1 }],
+        : [...c, { id: p.id, qty: 1, ...(variant ? { variant } : {}) }],
     );
     notify(p.name + " na sua sacola");
   };
   const change = (id: string, n: number) =>
     setCart((c) =>
       c
-        .map((i) => (i.id === id ? { ...i, qty: Math.min(99, i.qty + n) } : i))
+        .map((i) =>
+          cartKey(i) === id ? { ...i, qty: Math.min(99, i.qty + n) } : i,
+        )
         .filter((i) => i.qty > 0),
     );
   const count = cart.reduce((s, i) => s + i.qty, 0),
@@ -517,7 +552,12 @@ export default function VillaNatura() {
       (s, i) =>
         s +
         (products.find((p) => p.id === i.id)
-          ? sellingPrice(products.find((p) => p.id === i.id)!)
+          ? sellingPrice(
+              optionProduct(
+                products.find((p) => p.id === i.id)!,
+                i.variant,
+              ),
+            )
           : 0) *
           i.qty,
       0,
@@ -1031,64 +1071,75 @@ export default function VillaNatura() {
               </p>
             )}
             <div className="product-grid">
-              {filtered.map((p, i) => (
-                <article
-                  className="product-card"
-                  key={p.id}
-                  style={{ animationDelay: `${i * 65}ms` }}
-                >
-                  <button
-                    className="card-open"
-                    onClick={() => setSelected(p)}
-                    aria-label={`Abrir ${p.name}`}
-                  />
-                  <div className={"product-photo product-" + p.id}>
-                    <ProductImage product={p} />
-                    <span className="product-tag">{p.tag}</span>
-                    {p.sale_price != null && (
-                      <span className="sale-badge">Em oferta</span>
-                    )}
+              {filtered.map((original, i) => {
+                const p =
+                  offersOnly && original.sale_price == null
+                    ? optionProduct(
+                        original,
+                        original.variants?.find((v) => isOffer(v))?.id,
+                      )
+                    : original;
+                return (
+                  <article
+                    className="product-card"
+                    key={p.id}
+                    style={{ animationDelay: `${i * 65}ms` }}
+                  >
                     <button
-                      className="favorite"
-                      onClick={() => toggleFavorite(p.id)}
-                      aria-label={`Favoritar ${p.name}`}
-                      aria-pressed={favorite.includes(p.id)}
-                    >
-                      <Heart
-                        size={18}
-                        fill={favorite.includes(p.id) ? "currentColor" : "none"}
-                      />
-                    </button>
-                  </div>
-                  <div className="product-content">
-                    <small className="product-category">{p.category}</small>
-                    <h3 className="product-name">{p.name}</h3>
-                    <p>{p.subtitle}</p>
-                    <div className="product-bottom">
-                      <div>
-                        <small>{p.weight}</small>
-                        {p.sale_price != null && (
-                          <del
-                            className="original-price"
-                            aria-label="Preço original"
-                          >
-                            {money(p.price)}
-                          </del>
-                        )}
-                        <strong>{money(sellingPrice(p))}</strong>
-                      </div>
+                      className="card-open"
+                      onClick={() => setSelected(original)}
+                      aria-label={`Abrir ${p.name}`}
+                    />
+                    <div className={"product-photo product-" + p.id}>
+                      <ProductImage product={p} />
+                      <span className="product-tag">{p.tag}</span>
+                      {p.sale_price != null && (
+                        <span className="sale-badge">Em oferta</span>
+                      )}
                       <button
-                        className="add"
-                        disabled={!cartReady}
-                        onClick={() => add(p)}
-                        aria-label={`Adicionar ${p.name} à sacola`}
+                        className="favorite"
+                        onClick={() => toggleFavorite(p.id)}
+                        aria-label={`Favoritar ${p.name}`}
+                        aria-pressed={favorite.includes(p.id)}
                       >
-                        <ShoppingCart size={21} aria-hidden="true" />
+                        <Heart
+                          size={18}
+                          fill={
+                            favorite.includes(p.id) ? "currentColor" : "none"
+                          }
+                        />
                       </button>
                     </div>
-                  </div>
-                </article>
-              ))}
+                    <div className="product-content">
+                      <small className="product-category">{p.category}</small>
+                      <h3 className="product-name">{p.name}</h3>
+                      <p>{p.subtitle}</p>
+                      <div className="product-bottom">
+                        <div>
+                          <small>{p.weight}</small>
+                          {p.sale_price != null && (
+                            <del
+                              className="original-price"
+                              aria-label="Preço original"
+                            >
+                              {money(p.price)}
+                            </del>
+                          )}
+                          <strong>{money(sellingPrice(p))}</strong>
+                        </div>
+                        <button
+                          className="add"
+                          disabled={!cartReady}
+                          onClick={() => add(original)}
+                          aria-label={`Adicionar ${p.name} à sacola`}
+                        >
+                          <ShoppingCart size={21} aria-hidden="true" />
+                        </button>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
             </div>
             {!filtered.length && (
               <div className="empty">
@@ -1855,34 +1906,12 @@ export default function VillaNatura() {
           title={selected.name}
           wide
         >
-          <div className="product-detail">
-            <ProductImage
-              product={selected}
-              className="product-detail-photo"
-              lazy={false}
-            />
-            <div>
-              <span className="eyebrow">{selected.category}</span>
-              <h2>{selected.name}</h2>
-              <p>{selected.description}</p>
-              <span className="detail-weight">
-                {selected.weight} • {selected.subtitle}
-              </span>
-              {selected.sale_price != null && (
-                <del className="original-price">De {money(selected.price)}</del>
-              )}
-              <strong>{money(sellingPrice(selected))}</strong>
-              <button
-                className="primary"
-                disabled={!cartReady}
-                onClick={() => add(selected)}
-              >
-                <ShoppingCart size={18} aria-hidden="true" />
-                Adicionar à sacola
-              </button>
-              <ProductInformation product={selected} />
-            </div>
-          </div>
+          <ProductChoice
+            key={selected.id}
+            product={selected}
+            ready={cartReady}
+            onAdd={(variant) => add(selected, variant || "")}
+          />
           {products.some(
             (p) => p.category === selected.category && p.id !== selected.id,
           ) && (
@@ -1915,10 +1944,11 @@ export default function VillaNatura() {
           <div className="cart-content">
             {cart.length ? (
               cart.map((i) => {
-                const p = products.find((p) => p.id === i.id);
-                if (!p) return null;
+                const original = products.find((p) => p.id === i.id);
+                if (!original) return null;
+                const p = optionProduct(original, i.variant);
                 return (
-                  <div className="cart-row" key={i.id}>
+                  <div className="cart-row" key={cartKey(i)}>
                     <img src={p.image} alt="" />
                     <div>
                       <h3>{p.name}</h3>
@@ -1926,14 +1956,14 @@ export default function VillaNatura() {
                       <div className="quantity">
                         <button
                           aria-label={`Diminuir ${p.name}`}
-                          onClick={() => change(i.id, -1)}
+                          onClick={() => change(cartKey(i), -1)}
                         >
                           <Minus size={14} />
                         </button>
                         <span>{i.qty}</span>
                         <button
                           aria-label={`Aumentar ${p.name}`}
-                          onClick={() => change(i.id, 1)}
+                          onClick={() => change(cartKey(i), 1)}
                           disabled={i.qty >= 99}
                         >
                           <Plus size={14} />
@@ -1945,7 +1975,9 @@ export default function VillaNatura() {
                       className="icon-btn remove"
                       aria-label={`Remover ${p.name}`}
                       onClick={() =>
-                        setCart((c) => c.filter((x) => x.id !== i.id))
+                        setCart((c) =>
+                          c.filter((x) => cartKey(x) !== cartKey(i)),
+                        )
                       }
                     >
                       <X size={16} />
@@ -2195,7 +2227,7 @@ export default function VillaNatura() {
               })}
             </small>
             {currentOrder.items.map((i) => (
-              <div className="detail-line" key={i.id}>
+              <div className="detail-line" key={cartKey(i)}>
                 <span>
                   {i.qty} × {i.name}
                   <small>{i.weight}</small>

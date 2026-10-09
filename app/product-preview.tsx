@@ -8,21 +8,23 @@ import {
   fullProductImage,
   type ProductImageSettings,
 } from "../lib/product-image";
+import { ProductChoice } from "./product-choice";
+import type { Product } from "./nativa";
+import type { ProductExtras } from "../lib/product-options";
 import { ProductImage } from "./product-image";
-import {
-  ProductInformation,
-  type ProductInformationData,
-} from "./product-information";
-type PreviewProduct = ProductInformationData & {
-  name: string;
-  category: string;
-  description: string;
-  image: string;
-  price: number;
-  sale_price?: number | null;
-  active: boolean;
-  image_settings?: ProductImageSettings | null;
-};
+import { type ProductInformationData } from "./product-information";
+type PreviewProduct = ProductInformationData &
+  ProductExtras & {
+    id: string;
+    name: string;
+    category: string;
+    description: string;
+    image: string;
+    price: number;
+    sale_price?: number | null;
+    active: boolean;
+    image_settings?: ProductImageSettings | null;
+  };
 export function ProductPreview({
   product: p,
   onFrame,
@@ -93,20 +95,12 @@ export function ProductPreview({
         </article>
       ) : (
         <div className="preview-product-detail">
-          <ProductImage product={p} lazy={false} />
-          <span className="eyebrow">{p.category}</span>
-          <h2>{p.name || "Nome do produto"}</h2>
-          <p>{p.description || "A descrição aparece aqui."}</p>
-          <span className="detail-weight">
-            {[p.weight, p.subtitle].filter(Boolean).join(" • ")}
-          </span>
-          {sale && <del className="original-price">De {money(p.price)}</del>}
-          <strong>{money(price)}</strong>
-          <span className="primary full">
-            <ShoppingCart size={18} />
-            Adicionar à sacola
-          </span>
-          <ProductInformation product={p} />
+          <ProductChoice
+            key={p.id + p.image}
+            product={p as Product}
+            ready={false}
+            onAdd={() => {}}
+          />
         </div>
       )}
       <details className="product-photo-adjustments">

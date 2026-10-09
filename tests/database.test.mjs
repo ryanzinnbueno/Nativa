@@ -133,6 +133,15 @@ before(async () => {
       "utf8",
     ),
   );
+  await db.exec(
+    await readFile(
+      new URL(
+        "../supabase/migrations/202610090013_product_options.sql",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+  );
 });
 after(async () => {
   await db?.close();
@@ -815,4 +824,56 @@ test("product photo framing is public while updates stay admin-only and invalid 
       [JSON.stringify({ fit: "cover", zoom: 300, x: 50, y: 50 })],
     ),
   );
+});
+
+test("weight choices derive prices on the server, separate quantities, reject missing choices and preserve retries", async () => {
+  await db.query("update nativa_products set variants=$1 where id='caju'", [
+    JSON.stringify([
+      { id: "500g", weight: "500 g", price: 5000, sale_price: 4500 },
+    ]),
+  ]);
+  try {
+    const payload = order("option-checkout-test-001", {
+      phone: "11988887777",
+      items: [
+        { id: "caju", qty: 1 },
+        { id: "caju", variant: "500g", qty: 2, price: 1 },
+      ],
+    });
+    await as("anon", null, async () => {
+      const result = await place(payload);
+      assert.equal(result.items[1].price, 4500);
+      assert.equal(result.items[1].weight, "500 g");
+      assert.equal(result.total, result.items[0].price + 9000);
+      assert.equal((await place(payload)).id, result.id);
+      await assert.rejects(
+        place(
+          order("option-checkout-missing", {
+            phone: "11988887777",
+            items: [{ id: "caju", variant: "bad", qty: 1 }],
+          }),
+        ),
+      );
+      await assert.rejects(
+        place(
+          order("option-checkout-repeat", {
+            phone: "11988887777",
+            items: [
+              { id: "caju", variant: "500g", qty: 1 },
+              { id: "caju", variant: "500g", qty: 1 },
+            ],
+          }),
+        ),
+      );
+    });
+    await assert.rejects(
+      db.query("update nativa_products set variants=$1 where id='caju'", [
+        JSON.stringify([
+          { id: "bad", weight: "500g", price: 1, sale_price: 2 },
+        ]),
+      ]),
+    );
+  } finally {
+    await db.exec("update nativa_products set variants='[]' where id='caju'");
+  }
 });

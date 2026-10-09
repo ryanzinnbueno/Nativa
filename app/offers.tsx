@@ -1,9 +1,11 @@
+import { optionProduct, type ProductExtras } from "../lib/product-options";
+import { isOffer } from "../lib/shop-features";
 import { ProductImage } from "./product-image";
 import type { ProductImageSettings } from "../lib/product-image";
 import { Tag, ShoppingCart } from "lucide-react";
 import { money } from "./catalog";
 import { sellingPrice } from "../lib/pricing";
-type OfferProduct = {
+type OfferProduct = ProductExtras & {
   image_settings?: ProductImageSettings | null;
   id: string;
   name: string;
@@ -41,36 +43,44 @@ export function Offers({
       </div>
       {products.length ? (
         <div className="offer-cards">
-          {products.slice(0, 8).map((p) => (
-            <article className="offer-card" key={p.id}>
-              <button
-                className="card-open"
-                aria-label={`Abrir oferta de ${p.name}`}
-                onClick={() => onProduct(p.id)}
-              />
-              <div className="offer-image">
-                <ProductImage product={p} />
-                <span>
-                  <Tag size={13} />
-                  Em oferta
-                </span>
-              </div>
-              <div className="offer-content">
-                <h3 className="product-name">{p.name}</h3>
-                <small>{p.weight}</small>
-                <del>{money(p.price)}</del>
-                <strong>{money(sellingPrice(p))}</strong>
+          {products.slice(0, 8).map((original) => {
+            const p = optionProduct(
+              original,
+              original.sale_price != null
+                ? undefined
+                : original.variants?.find((v) => isOffer(v))?.id,
+            );
+            return (
+              <article className="offer-card" key={p.id}>
                 <button
-                  className="secondary full"
-                  disabled={!ready}
-                  onClick={() => onAdd(p.id)}
-                >
-                  <ShoppingCart size={17} />
-                  Adicionar
-                </button>
-              </div>
-            </article>
-          ))}
+                  className="card-open"
+                  aria-label={`Abrir oferta de ${p.name}`}
+                  onClick={() => onProduct(p.id)}
+                />
+                <div className="offer-image">
+                  <ProductImage product={p} />
+                  <span>
+                    <Tag size={13} />
+                    Em oferta
+                  </span>
+                </div>
+                <div className="offer-content">
+                  <h3 className="product-name">{p.name}</h3>
+                  <small>{p.weight}</small>
+                  <del>{money(p.price)}</del>
+                  <strong>{money(sellingPrice(p))}</strong>
+                  <button
+                    className="secondary full"
+                    disabled={!ready}
+                    onClick={() => onAdd(p.id)}
+                  >
+                    <ShoppingCart size={17} />
+                    Adicionar
+                  </button>
+                </div>
+              </article>
+            );
+          })}
         </div>
       ) : (
         <p className="offers-empty">

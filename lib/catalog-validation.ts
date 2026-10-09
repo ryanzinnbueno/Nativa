@@ -49,6 +49,10 @@ export function validateProduct(b: Record<string, unknown>) {
   )
     throw new Error("Informe um preço entre R$ 0,01 e R$ 10.000,00.");
   return {
+    ...(b.images !== undefined ? { images: validatePhotos(b.images) } : {}),
+    ...(b.variants !== undefined
+      ? { variants: validateVariants(b.variants) }
+      : {}),
     ...base(b),
     name: text(b.name, 100, true),
     subtitle: text(b.subtitle, 150),
@@ -197,4 +201,38 @@ export function validateProductImage(
     x: f.x as number,
     y: f.y as number,
   };
+}
+
+export function validatePhotos(value: unknown): string[] {
+  if (!Array.isArray(value) || value.length > 7)
+    throw new Error("Use até 8 fotos, incluindo a principal.");
+  return [...new Set(value.map(imageAddress))];
+}
+export function validateVariants(value: unknown) {
+  if (!Array.isArray(value) || value.length > 19)
+    throw new Error("Use até 20 opções, incluindo a principal.");
+  const ids = new Set<string>();
+  return value.map((v) => {
+    if (!v || typeof v !== "object")
+      throw new Error("Confira as opções do produto.");
+    const id = text(v.id, 80, true);
+    if (ids.has(id)) throw new Error("As opções precisam ser diferentes.");
+    ids.add(id);
+    if (
+      !Number.isInteger(v.price) ||
+      v.price < 1 ||
+      v.price > 1000000 ||
+      (v.sale_price != null &&
+        (!Number.isInteger(v.sale_price) ||
+          v.sale_price < 1 ||
+          v.sale_price >= v.price))
+    )
+      throw new Error("Confira os preços de cada opção.");
+    return {
+      id,
+      weight: text(v.weight, 60, true),
+      price: v.price,
+      sale_price: v.sale_price ?? null,
+    };
+  });
 }

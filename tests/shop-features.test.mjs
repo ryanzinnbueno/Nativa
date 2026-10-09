@@ -29,3 +29,8 @@ test("quick registration accepts local and country-coded numbers, rejects incomp
   ])
     assert.throws(() => brazilPhone(p));
 });
+
+test("offers include a promotional weight even when the main pack has no discount",()=>{
+ assert.equal(isOffer({price:1000,variants:[{price:2500,sale_price:2200}]}),true);
+ assert.equal(isOffer({price:1000,variants:[{price:2500,sale_price:3000}]}),false);
+});

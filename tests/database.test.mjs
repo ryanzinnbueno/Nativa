@@ -106,7 +106,24 @@ before(async () => {
       "utf8",
     ),
   );
-  await db.exec(await readFile(new URL('../supabase/migrations/202610090010_villa_natura.sql', import.meta.url), 'utf8'));
+  await db.exec(
+    await readFile(
+      new URL(
+        "../supabase/migrations/202610090010_villa_natura.sql",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+  );
+  await db.exec(
+    await readFile(
+      new URL(
+        "../supabase/migrations/202610090011_featured_categories.sql",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+  );
 });
 after(async () => {
   await db?.close();
@@ -159,6 +176,18 @@ test("categories can be created only by admins; renaming updates product and ban
   );
 });
 
+test('featured category choices persist publicly, while only admins can change them', async () => {
+  await as('authenticated',admin,()=>db.exec("update nativa_categories set featured=true, story_image='/images/flores.webp', story_title='Meu destaque' where id='flores'"));
+  await as('anon',null,async()=>{
+    const {rows}=await db.query("select featured,story_title from nativa_categories where id='flores'");
+    assert.equal(rows[0].featured,true); assert.equal(rows[0].story_title,'Meu destaque');
+    await assert.rejects(db.exec("update nativa_categories set featured=false where id='flores'"));
+  });
+  await as('authenticated',outsider,async()=>{
+    const {rows}=await db.query("update nativa_categories set featured=false where id='flores' returning id"); assert.equal(rows.length,0);
+  });
+  await as('authenticated',admin,()=>db.exec("update nativa_categories set featured=false where id='flores'"));
+});
 test("marketing uploads allow admins only and do not permit overwrites or customer-document paths", async () => {
   const insert =
     "insert into storage.objects(bucket_id,name) values ('nativa-images','product/foto.webp')";
@@ -379,7 +408,7 @@ test("an authenticated account without membership sees no CRM rows and cannot gr
     assert.equal(
       (
         await db.query(
-          "update nativa_orders set status='Concluído' returning id",
+          "update nativa_orders set status='ConcluÃ­do' returning id",
         )
       ).rows.length,
       0,
@@ -636,7 +665,7 @@ test("product details preserve admin-only editing and reject excessive content",
   await as("authenticated", admin, () =>
     db.query(
       "update nativa_products set highlights=$1,usage=$2 where id='caju'",
-      ["Torrada\nSem sal", "Sugestão de uso informada pela loja"],
+      ["Torrada\nSem sal", "SugestÃ£o de uso informada pela loja"],
     ),
   );
   await as("authenticated", outsider, () =>
@@ -649,7 +678,7 @@ test("product details preserve admin-only editing and reject excessive content",
       )
     ).rows[0];
     assert.equal(row.highlights, "Torrada\nSem sal");
-    assert.equal(row.usage, "Sugestão de uso informada pela loja");
+    assert.equal(row.usage, "SugestÃ£o de uso informada pela loja");
   });
   await as("authenticated", admin, () =>
     assert.rejects(
@@ -706,7 +735,12 @@ test("customer sessions see only their own orders, never guest history for the s
       [second.id],
     ),
   );
-  await as("anon", null, () => assert.rejects(db.query("select id from nativa_orders"), /permission denied/));
+  await as("anon", null, () =>
+    assert.rejects(
+      db.query("select id from nativa_orders"),
+      /permission denied/,
+    ),
+  );
   await as("authenticated", other, () =>
     assert.rejects(place(buyer), /pedido mudou/),
   );

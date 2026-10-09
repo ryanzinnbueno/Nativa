@@ -5,6 +5,7 @@ import { TrashPanel, TrashAction } from "./trash-panel";
 import { CatalogPanel, ReportsPanel } from "./admin-panels";
 import { CategoriesPanel } from "./categories-panel";
 import { defaultCategories, type Category } from "./category-data";
+import { categoryStories } from "../lib/category-stories";
 import { sellingPrice } from "../lib/pricing";
 import {
   defaultPromotion,
@@ -874,79 +875,57 @@ export default function VillaNatura() {
               if (p) add(p);
             }}
           />
-          <section
-            className="category-stories section"
-            aria-labelledby="category-stories-title"
-          >
-            <div className="section-title">
-              <div>
-                <span className="eyebrow">
-                  UM UNIVERSO DE ESCOLHAS NATURAIS
+          {categoryStories(storeCategories, products).length > 0 && (
+            <section
+              className="category-stories section"
+              aria-labelledby="category-stories-title"
+            >
+              <div className="section-title">
+                <div>
+                  <span className="eyebrow">
+                    UM UNIVERSO DE ESCOLHAS NATURAIS
+                  </span>
+                  <h2 id="category-stories-title">Qual é o seu momento?</h2>
+                </div>
+                <span className="quiet">
+                  Explore por categoria, no seu ritmo.
                 </span>
-                <h2 id="category-stories-title">Qual é o seu momento?</h2>
               </div>
-              <span className="quiet">
-                Explore por categoria, no seu ritmo.
+              <div className="category-story-grid">
+                {categoryStories(storeCategories, products).map(
+                  (card, index) => (
+                    <button
+                      key={card.id}
+                      className={"category-story category-story-" + index}
+                      onClick={() => {
+                        setCategory(card.category);
+                        setOffersOnly(false);
+                        setSearch("");
+                        setFavoriteOnly(false);
+                        document
+                          .getElementById("catalogo")
+                          ?.scrollIntoView({ behavior: "smooth" });
+                      }}
+                      aria-label={`Explorar ${card.title}`}
+                    >
+                      <img src={card.image} alt="" loading="lazy" />
+                      <div className="category-story-copy">
+                        <span>{card.eyebrow}</span>
+                        <h3>{card.title}</h3>
+                        <p>{card.description}</p>
+                        <span className="category-story-link">
+                          Explorar categoria <Plus size={16} />
+                        </span>
+                      </div>
+                    </button>
+                  ),
+                )}
+              </div>
+              <span className="category-swipe">
+                Deslize para descobrir mais categorias
               </span>
-            </div>
-            <div className="category-story-grid">
-              {[
-                {
-                  title: "Castanhas e sabores",
-                  description: "Uma pausa com mais sabor.",
-                  category: "Castanhas",
-                  image: "/images/category-castanhas.webp?v=1",
-                  eyebrow: "PARA SUA PAUSA",
-                },
-                {
-                  title: "Chás e infusões",
-                  description: "Desacelere. Saboreie o momento.",
-                  category: "Chás e ervas",
-                  image: "/images/category-chas.webp?v=1",
-                  eyebrow: "PARA O SEU RITUAL",
-                },
-                {
-                  title: "Grãos e cereais",
-                  description: "O simples que faz parte do dia.",
-                  category: "Grãos e cereais",
-                  image: "/images/category-graos.webp?v=1",
-                  eyebrow: "PARA SUA ROTINA",
-                },
-              ]
-                .filter((card) =>
-                  storeCategories.some((entry) => entry.name === card.category),
-                )
-                .map((card, index) => (
-                  <button
-                    key={card.category}
-                    className={"category-story category-story-" + index}
-                    onClick={() => {
-                      setCategory(card.category);
-                      setOffersOnly(false);
-                      setSearch("");
-                      setFavoriteOnly(false);
-                      document
-                        .getElementById("catalogo")
-                        ?.scrollIntoView({ behavior: "smooth" });
-                    }}
-                    aria-label={`Explorar ${card.title}`}
-                  >
-                    <img src={card.image} alt="" loading="lazy" />
-                    <div className="category-story-copy">
-                      <span>{card.eyebrow}</span>
-                      <h3>{card.title}</h3>
-                      <p>{card.description}</p>
-                      <span className="category-story-link">
-                        Explorar categoria <Plus size={16} />
-                      </span>
-                    </div>
-                  </button>
-                ))}
-            </div>
-            <span className="category-swipe">
-              Deslize para descobrir mais categorias
-            </span>
-          </section>
+            </section>
+          )}
           <section id="catalogo" className="catalog section">
             <div className="section-title">
               <div>
@@ -1154,9 +1133,9 @@ export default function VillaNatura() {
                 mesa.
               </p>
               <p>
-                A Villa Natura é um convite para fazer escolhas mais naturais, no seu
-                ritmo. Explore nossa seleção e encontre o que combina com sua
-                rotina.
+                A Villa Natura é um convite para fazer escolhas mais naturais,
+                no seu ritmo. Explore nossa seleção e encontre o que combina com
+                sua rotina.
               </p>
               <small className="draft-note">
                 Escolhas naturais para acompanhar seu dia.

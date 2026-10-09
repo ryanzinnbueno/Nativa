@@ -1,6 +1,7 @@
 import { createClient } from "../../../lib/supabase/server";
 import { reply, sameOrigin } from "../../../lib/supabase/http";
 import { brazilPhone } from "../../../lib/shop-features";
+import { customerAuthError } from "../../../lib/customer-auth-errors";
 export const dynamic = "force-dynamic";
 const profile = (user: {
   phone?: string;
@@ -59,16 +60,10 @@ export async function POST(request: Request) {
         password: body.password,
         options: { data: { name: body.name.trim() } },
       });
-      if (error)
-        return reply(
-          {
-            error:
-              error.status === 429
-                ? "Muitas tentativas. Aguarde alguns minutos."
-                : "Não foi possível cadastrar. Se já tem uma conta, use Entrar.",
-          },
-          error.status === 429 ? 429 : 400,
-        );
+      if (error) {
+        const failure = customerAuthError(error, true);
+        return reply({ error: failure.message }, failure.status);
+      }
       if (!data.session || !data.user)
         return reply(
           {
@@ -83,16 +78,10 @@ export async function POST(request: Request) {
       phone,
       password: body.password,
     });
-    if (error || !data.user)
-      return reply(
-        {
-          error:
-            error?.status === 429
-              ? "Muitas tentativas. Aguarde alguns minutos."
-              : "Telefone ou senha incorretos.",
-        },
-        error?.status === 429 ? 429 : 401,
-      );
+    if (error || !data.user) {
+      const failure = customerAuthError(error || {}, false);
+      return reply({ error: failure.message }, failure.status);
+    }
     return reply({ user: profile(data.user) });
   } catch {
     return reply(

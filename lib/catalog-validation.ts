@@ -75,7 +75,24 @@ export function validateCategory(b: Record<string, unknown>) {
     (b.position as number) > 999
   )
     throw new Error("Confira a ordem de exibição.");
-  return { id: text(b.id, 80, true), name, position: b.position as number };
+  if (b.featured !== undefined && typeof b.featured !== "boolean")
+    throw new Error("Confira a seleção de destaque.");
+  return {
+    id: text(b.id, 80, true),
+    name,
+    position: b.position as number,
+    ...(b.featured !== undefined ? { featured: b.featured } : {}),
+    ...(b.story_image !== undefined
+      ? { story_image: b.story_image ? imageAddress(b.story_image) : "" }
+      : {}),
+    ...(b.story_title !== undefined
+      ? { story_title: text(b.story_title, 60) }
+      : {}),
+    ...(b.story_description !== undefined
+      ? { story_description: text(b.story_description, 160) }
+      : {}),
+    ...(b.story_tag !== undefined ? { story_tag: text(b.story_tag, 40) } : {}),
+  };
 }
 export function validateBanner(b: Record<string, unknown>) {
   if (b.image_only !== undefined && typeof b.image_only !== "boolean")

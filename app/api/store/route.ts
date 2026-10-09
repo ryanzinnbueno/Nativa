@@ -61,7 +61,9 @@ export async function GET(request: Request) {
         .order("id"),
       client
         .from("nativa_categories")
-        .select("id,name,position")
+        .select(
+          "id,name,position,featured,story_image,story_title,story_description,story_tag",
+        )
         .order("position")
         .order("name"),
     ]);

@@ -592,7 +592,8 @@ export default function VillaNatura() {
       channel =
         (e.nativeEvent as SubmitEvent).submitter?.getAttribute(
           "data-channel",
-        ) || "Site";
+        ) || (phone ? "WhatsApp" : "Site");
+    if (saving) return;
     if (channel === "WhatsApp" && !phone) {
       setSubmitError(
         "O atendimento por WhatsApp não está disponível. Finalize seu pedido pelo site.",
@@ -616,15 +617,23 @@ export default function VillaNatura() {
     try {
       const result = await api<OrderResult>("POST", data);
       const message = `Olá, Villa Natura! Meu pedido #${result.id.slice(0, 8).toUpperCase()}:\n\n${result.items.map((i) => `${i.qty}x ${i.name} (${i.weight}) — ${money(i.price * i.qty)}`).join("\n")}\n\nSubtotal: ${money(result.total)}\nNome: ${data.name}\nTelefone: ${data.phone}\n${delivery}${data.address ? ": " + data.address : ""}\nPagamento: ${data.payment}\n${data.notes ? "Observações: " + data.notes : ""}\nEntrega e disponibilidade a confirmar.`;
+      const wa = phone
+        ? `https://wa.me/${phone}?text=${encodeURIComponent(message)}`
+        : "";
       setSuccess({
         ...result,
         channel,
-        wa: phone
-          ? `https://wa.me/${phone}?text=${encodeURIComponent(message)}`
-          : "",
+        wa,
       });
       setCart([]);
       if (admin) load();
+      if (channel === "WhatsApp" && wa) {
+        try {
+          window.location.assign(wa);
+        } catch {
+          notify("Pedido recebido! Use o botão para abrir o WhatsApp.");
+        }
+      }
     } catch (err) {
       setSubmitError((err as Error).message);
     } finally {
@@ -1996,7 +2005,7 @@ export default function VillaNatura() {
               </p>
               <p>
                 {success.channel === "WhatsApp"
-                  ? "Continue no WhatsApp para enviar sua mensagem à loja."
+                  ? "Seu pedido já foi recebido pela loja. No WhatsApp, toque em Enviar para iniciar a conversa. Se ele não abriu, use o botão abaixo."
                   : "Recebemos seu pedido! A Villa Natura vai confirmar os próximos passos com você."}
               </p>
               <small>
@@ -2135,20 +2144,32 @@ export default function VillaNatura() {
               <button
                 className="primary full"
                 type="submit"
-                data-channel="Site"
+                data-channel={phone ? "WhatsApp" : "Site"}
                 disabled={saving}
               >
-                {saving ? "Registrando…" : "Finalizar pedido pelo site"}
+                {phone && <MessageCircle size={19} />}
+                {saving
+                  ? "Registrando…"
+                  : phone
+                    ? "Finalizar e abrir WhatsApp"
+                    : "Finalizar pedido pelo site"}
               </button>
-              <button
-                className="whatsapp full"
-                type="submit"
-                data-channel="WhatsApp"
-                disabled={saving || !phone}
-              >
-                <MessageCircle size={19} />
-                Pedir pelo WhatsApp
-              </button>
+              {phone && (
+                <small className="center">
+                  O WhatsApp abrirá com a mensagem pronta. Toque em Enviar para
+                  conversar com a loja.
+                </small>
+              )}
+              {phone && (
+                <button
+                  className="secondary full"
+                  type="submit"
+                  data-channel="Site"
+                  disabled={saving}
+                >
+                  Finalizar somente pelo site
+                </button>
+              )}
               {!phone && (
                 <small className="center">
                   Para falar com a Villa Natura, finalize seu pedido pelo site.
